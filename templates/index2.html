@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Horizon | AI Socio-Economic Matrix</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <!-- AOS -->
+  <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="..static/favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="..static/apple-touch-icon.png">
+
+  <style>
+    :root{
+      --bg-dark:#020204;
+      --accent-cyan:#0dcaf0;
+      --accent-purple:#6f42fb;
+      --grid-color:rgba(13,202,240,.12);
+      --edge:rgba(255,255,255,.06);
+      --glass:rgba(255,255,255,.03);
+    }
+
+    body{
+      background-color:var(--bg-dark);
+      color:#fff;
+      font-family:'Inter',sans-serif;
+      margin:0;
+      overflow-x:hidden;
+      scroll-behavior:smooth;
+    }
+
+    /* --- BACKGROUND ANIMATION --- */
+    .hero-bg{
+      position:fixed; inset:0;
+      z-index:-1;
+      perspective:1200px;
+      overflow:hidden;
+      background:radial-gradient(circle at center,#0a1128 0%,#020204 100%);
+    }
+    .grid-plane{
+      position:absolute;
+      width:200%; height:200%;
+      bottom:-50%; left:-50%;
+      background-image:
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+      background-size:60px 60px;
+      transform:rotateX(65deg);
+      animation:grid-move 15s linear infinite;
+    }
+    @keyframes grid-move{
+      from{background-position:0 0;}
+      to{background-position:0 1000px;}
+    }
+
+    /* --- NAVIGATION --- */
+    .navbar{
+      backdrop-filter:blur(15px);
+      border-bottom:1px solid rgba(255,255,255,.05);
+      z-index:1000;
+    }
+    .navbar-brand{
+      font-family:'Space Grotesk',sans-serif;
+      font-weight:700;
+      color:#fff !important;
+      letter-spacing:.3px;
+    }
+    .brand-tagline{
+      font-family:'JetBrains Mono',monospace;
+      font-size:.65rem;
+      color:var(--accent-cyan);
+      text-transform:uppercase;
+      display:block;
+      margin-top:.15rem;
+      opacity:.95;
+    }
+    .nav-link{ opacity:.85; }
+    .nav-link:hover{ opacity:1; }
+
+    /* --- HERO --- */
+    .hero-section{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding-top:110px;
+    }
+    .tech-gradient-text{
+      background:linear-gradient(90deg,#0dcaf0,#6f42fb,#0dcaf0);
+      background-size:200% auto;
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      animation:shine 5s linear infinite;
+    }
+    @keyframes shine{ to{ background-position:200% center; } }
+
+    .btn-tech{
+      background:transparent;
+      border:1px solid var(--accent-cyan);
+      color:var(--accent-cyan);
+      padding:14px 40px;
+      font-family:'JetBrains Mono',monospace;
+      clip-path:polygon(10% 0,100% 0,100% 70%,90% 100%,0 100%,0 30%);
+      transition:all .3s;
+    }
+    .btn-tech:hover{
+      background:var(--accent-cyan);
+      color:#000;
+      box-shadow:0 0 25px var(--accent-cyan);
+    }
+
+    .coming-soon-btn{
+      font-family:'JetBrains Mono',monospace;
+      font-size:.8rem;
+      color:rgba(255,255,255,.42) !important;
+      cursor:not-allowed;
+      animation:pulse-opacity 3s ease-in-out infinite;
+    }
+    @keyframes pulse-opacity{
+      0%,100%{opacity:.6;}
+      50%{opacity:1;}
+    }
+
+    /* --- SECTION HEADERS --- */
+    .section-title{
+      text-align:center;
+      margin-bottom:80px;
+    }
+    .section-title h2{
+      font-family:'Space Grotesk',sans-serif;
+      font-weight:700;
+      font-size:2.5rem;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .section-title .divider{
+      width:80px;
+      height:2px;
+      background:var(--accent-cyan);
+      margin:20px auto;
+    }
+
+    /* --- TIMELINE --- */
+    .timeline-container{
+      position:relative;
+      padding:10px 0 30px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    .timeline-item{
+      display:grid;
+      grid-template-columns: 1fr 72px 1fr;
+      align-items:center;
+      gap:28px;
+      margin:0 0 90px;
+      position:relative;
+    }
+    .timeline-item::before{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:-60px;
+      bottom:-60px;
+      width:1px;
+      background:rgba(13,202,240,.28);
+      transform:translateX(-.5px);
+      pointer-events:none;
+    }
+    .timeline-item:first-child::before{ top:-10px; }
+    .timeline-item:last-child::before{ bottom:-10px; }
+
+    .timeline-mid{
+      position:relative;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .timeline-dot{
+      width:12px; height:12px;
+      border-radius:50%;
+      background:var(--accent-cyan);
+      box-shadow:0 0 18px rgba(13,202,240,.9);
+      z-index:2;
+    }
+
+    .tech-card-body,
+    .tech-card-img{
+      border:1px solid var(--edge);
+      background:rgba(255,255,255,.02);
+      backdrop-filter:blur(10px);
+      transition:.35s ease;
+      border-radius:14px;
+      overflow:hidden;
+    }
+    .tech-card-body{ padding:28px; }
+    .tech-card-img{ padding:10px; }
+
+    .tech-card-img img{
+      width:100%;
+      display:block;
+      border-radius:10px;
+      filter:grayscale(1) opacity(.72);
+      transition:.5s ease;
+      transform:scale(1);
+    }
+
+    .timeline-item:hover .tech-card-img img{
+      filter:grayscale(0) opacity(1);
+      transform:scale(1.02);
+    }
+    .timeline-item:hover .tech-card-body{
+      border-color:rgba(13,202,240,.55);
+      background:rgba(13,202,240,.03);
+    }
+
+    .timeline-item.is-alt .tech-card-img{ grid-column:1; }
+    .timeline-item.is-alt .tech-card-body{ grid-column:3; }
+    .timeline-item:not(.is-alt) .tech-card-body{ grid-column:1; }
+    .timeline-item:not(.is-alt) .tech-card-img{ grid-column:3; }
+    .timeline-item .timeline-mid{ grid-column:2; }
+
+    @media (max-width: 991px){
+      .timeline-item{
+        grid-template-columns: 28px 1fr;
+        gap:18px;
+        margin-bottom:60px;
+      }
+      .timeline-item::before{
+        left:14px;
+        transform:none;
+      }
+      .timeline-mid{
+        grid-column:1;
+        align-items:flex-start;
+        padding-top:10px;
+      }
+      .timeline-dot{ margin-top:2px; }
+      .tech-card-body,
+      .tech-card-img{
+        grid-column:2 !important;
+      }
+      .tech-card-img{ order:1; }
+      .tech-card-body{ order:2; }
+    }
+
+    /* --- CTA --- */
+    .cta-box{
+      border:1px solid rgba(13,202,240,.35);
+      background:
+        radial-gradient(circle at top, rgba(13,202,240,.08), transparent 60%),
+        rgba(255,255,255,.02);
+      backdrop-filter:blur(14px);
+      border-radius:22px;
+      box-shadow:0 0 60px rgba(13,202,240,.08);
+    }
+
+    /* --- SIMPLE FOOTER --- */
+    footer{
+      position:relative;
+      z-index:2;
+      border-top:1px solid rgba(255,255,255,.06);
+      background:rgba(2,2,4,.92);
+      padding:22px 0;
+      text-align:center;
+    }
+    footer .footer-title{
+      font-family:'Space Grotesk',sans-serif;
+      font-weight:700;
+      letter-spacing:.3px;
+      margin:0;
+      font-size:1rem;
+    }
+    footer .footer-sub{
+      margin:6px 0 0;
+      font-family:'JetBrains Mono',monospace;
+      font-size:.78rem;
+      color:rgba(255,255,255,.55);
+    }
+.text-secondary{
+  color: rgba(255,255,255,.72) !important;
+  font-size: 16px !important;
+}
+p.lead.text-secondary{
+  color: rgba(255,255,255,.80) !important;
+}
+
+.text-info{
+  font-size: 1rem !important;
+}
+    #overview .overview-wrap{
+  border-radius:22px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+  box-shadow:0 16px 44px rgba(0,0,0,.38);
+  padding:1.25rem;
+}
+
+#overview .overview-video{
+  border-radius:18px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.16);
+  background:#000;
+  box-shadow:0 14px 34px rgba(0,0,0,.32);
+}
+
+#overview .overview-video video{
+  width:100%;
+  height:auto;
+  display:block;
+  object-fit:cover;
+}
+
+#overview .overview-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:14px;
+  margin-top:14px;
+}
+
+#overview .o-card{
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));
+  box-shadow:0 12px 30px rgba(0,0,0,.28);
+  padding:1.05rem 1.05rem;
+}
+
+#overview .o-title{
+  font-family:Cinzel,serif;
+  font-weight:700;
+  letter-spacing:1px;
+  margin:0 0 .45rem;
+  font-size:1.05rem;
+}
+
+#overview .o-copy{color:#eef3fb;opacity:.95;margin:0}
+
+@media (max-width: 991px){
+  #overview .overview-grid{grid-template-columns:1fr}
+}
+
+  </style>
+</head>
+
+<body>
+  <div class="hero-bg"><div class="grid-plane"></div></div>
+
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top py-3" data-aos="fade-down" data-aos-duration="800">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        PROJECT HORIZON
+        <span class="brand-tagline">Decision Matrix Platform</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav"
+        aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-end" id="topNav">
+        <ul class="navbar-nav gap-4">
+          <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero-section">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+          <div class="mb-3"
+               data-aos="fade-up"
+               data-aos-duration="800"
+               data-aos-delay="50"
+               style="font-family:'JetBrains Mono',monospace; color:var(--accent-cyan); font-size:.75rem; letter-spacing:3px;">
+            ACADEMIC POLICY SIMULATOR
+          </div>
+
+          <h1 class="display-3 fw-bold mb-4"
+              data-aos="zoom-in"
+              data-aos-duration="900"
+              data-aos-delay="120"
+              style="font-family:'Space Grotesk',sans-serif;">
+            Analyzing the <span class="tech-gradient-text">Automation Shift</span>
+          </h1>
+
+          <div class="row justify-content-center"
+               data-aos="fade-up"
+               data-aos-duration="900"
+               data-aos-delay="200">
+            <div class="col-md-8">
+              <p class="lead text-secondary mb-5">
+                An educational framework using GPT-integrated models to evaluate the ethical and socio-economic consequences of AI-driven job displacement.
+              </p>
+            </div>
+          </div>
+
+          <div class="d-flex gap-4 justify-content-center"
+               data-aos="fade-up"
+               data-aos-duration="900"
+               data-aos-delay="280">
+            <a href="#about" class="btn btn-tech">Learn More</a>
+            <button class="btn btn-link text-decoration-none fw-bold coming-soon-btn" disabled>
+              Coming Soon
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </header>
+<section id="about" class="py-5" style="background:rgba(2,2,4,.9); position:relative; z-index:1;">
+  <div class="container py-5">
+
+    <!-- Main About Title -->
+    <div class="section-title"
+         data-aos="fade-up"
+         data-aos-duration="900">
+      <h2>About</h2>
+      <div class="divider"></div>
+    </div>
+
+    <!-- About: Decision Matrix -->
+    <div class="row align-items-center g-5 mb-5">
+      <div class="col-lg-6"
+           data-aos="fade-right"
+           data-aos-duration="1000"
+           data-aos-delay="80">
+        <h3 class="h2 fw-bold mb-4" style="font-family:'Space Grotesk',sans-serif;">
+          Decision Matrix <span class="text-info">Logic</span>
+        </h3>
+
+        <p class="text-secondary mb-4">
+          Project Horizon provides an objective environment for community leaders and students to
+          stress-test policy decisions against rapid technological change.
+        </p>
+
+        <div class="mb-4"
+             data-aos="fade-up"
+             data-aos-duration="900"
+             data-aos-delay="120">
+          <h6 class="text-info" style="font-family:'JetBrains Mono',monospace;">
+            01. Ethical Evaluation
+          </h6>
+          <p class="small text-secondary mb-0">
+            Analyze the moral implications of replacing human labor with automated systems in essential services.
+          </p>
+        </div>
+
+        <div data-aos="fade-up"
+             data-aos-duration="900"
+             data-aos-delay="200">
+          <h6 class="text-info" style="font-family:'JetBrains Mono',monospace;">
+            02. Economic Projection
+          </h6>
+          <p class="small text-secondary mb-0">
+            Use GPT-modeled data to forecast fluctuations in local economies and public welfare.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-lg-6"
+           data-aos="zoom-in"
+           data-aos-duration="1000"
+           data-aos-delay="140">
+        <div class="p-2 border border-secondary">
+          <img src="..static/about.png" class="img-fluid" alt="Research" />
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBSECTION: Motivation & Impact -->
+    <div class="row mb-4">
+      <div class="col-12"
+           data-aos="fade-up"
+           data-aos-duration="850">
+        <h3 class="fw-bold"
+            style="font-family:'Space Grotesk',sans-serif; font-size:1.6rem;">
+          Motivation & Impact
+        </h3>
+        <p class="text-secondary mb-0" style="max-width:720px;">
+          Why Project Horizon was created and how it supports responsible thinking about AI-driven change.
+        </p>
+      </div>
+    </div>
+
+    <div class="row g-4 align-items-stretch">
+
+      <!-- Motivation -->
+      <div class="col-lg-6"
+           data-aos="fade-right"
+           data-aos-duration="900"
+           data-aos-delay="80">
+        <div class="tech-card-body h-100">
+          <span class="text-info d-block mb-2"
+                style="font-family:'JetBrains Mono',monospace; font-size:.7rem; letter-spacing:2px;">
+            MOTIVATION
+          </span>
+
+          <p class="text-secondary mb-0">
+            Rapid advances in AI and automation raise complex ethical and economic questions.
+            Horizon helps learners explore these issues through structured scenarios,
+            rather than abstract or polarized debate.
+          </p>
+        </div>
+      </div>
+
+      <!-- Impact -->
+      <div class="col-lg-6"
+           data-aos="fade-left"
+           data-aos-duration="900"
+           data-aos-delay="120">
+        <div class="tech-card-body h-100">
+          <span class="text-info d-block mb-2"
+                style="font-family:'JetBrains Mono',monospace; font-size:.7rem; letter-spacing:2px;">
+            IMPACT
+          </span>
+
+          <p class="text-secondary mb-0">
+            By visualizing long-term consequences before real policies are enacted,
+            the platform encourages clearer reasoning, informed discussion,
+            and responsible perspectives on the societal impact of AI.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+  <!-- FEATURES -->
+  <section id="features" class="py-5"
+    style="background:rgba(2,2,4,.95); position:relative; z-index:1; border-top:1px solid rgba(255,255,255,.05);">
+    <div class="container py-5">
+
+      <div class="section-title"
+           data-aos="fade-up"
+           data-aos-duration="900">
+        <h2>Features</h2>
+        <p class="text-secondary mb-0">How Project Horizon Works</p>
+        <div class="divider"></div>
+      </div>
+
+      <div class="timeline-container">
+
+        <!-- Feature 1 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-duration="900" data-aos-delay="60">
+          <div class="tech-card-body" data-aos="fade-right" data-aos-duration="950" data-aos-delay="120">
+            <span class="text-info d-block mb-2" style="font-family:'JetBrains Mono',monospace; font-size:.7rem;">CORE_FEATURE_01</span>
+            <h4 class="fw-bold mb-3" style="font-family:'Space Grotesk',sans-serif;">Scenario-Based Decision Making</h4>
+            <p class="text-secondary small mb-0">
+              Step into realistic policy scenarios shaped by AI and automation. Users make difficult choices as community leaders,
+              policymakers, or citizens—exploring trade-offs that affect real people and communities.
+            </p>
+          </div>
+
+          <div class="timeline-mid"><div class="timeline-dot" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="160"></div></div>
+
+          <div class="tech-card-img" data-aos="fade-left" data-aos-duration="950" data-aos-delay="120">
+            <img src="..static/about2.png" alt="Decision Making" />
+          </div>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="timeline-item is-alt" data-aos="fade-up" data-aos-duration="900" data-aos-delay="80">
+          <div class="tech-card-img" data-aos="fade-right" data-aos-duration="950" data-aos-delay="140">
+            <img src="..static/about3.png" alt="Dashboard" />
+          </div>
+
+          <div class="timeline-mid"><div class="timeline-dot" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="180"></div></div>
+
+          <div class="tech-card-body" data-aos="fade-left" data-aos-duration="950" data-aos-delay="140">
+            <span class="text-info d-block mb-2" style="font-family:'JetBrains Mono',monospace; font-size:.7rem;">CORE_FEATURE_02</span>
+            <h4 class="fw-bold mb-3" style="font-family:'Space Grotesk',sans-serif;">Impact Analysis Dashboard</h4>
+            <p class="text-secondary small mb-0">
+              After decisions are made, the dashboard visualizes how those choices affect jobs, economic stability, and social outcomes.
+              Users can compare paths, explore trends, and understand long-term consequences at a glance.
+            </p>
+          </div>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="timeline-item" data-aos="fade-up" data-aos-duration="900" data-aos-delay="100">
+          <div class="tech-card-body" data-aos="fade-right" data-aos-duration="950" data-aos-delay="160">
+            <span class="text-info d-block mb-2" style="font-family:'JetBrains Mono',monospace; font-size:.7rem;">CORE_FEATURE_03</span>
+            <h4 class="fw-bold mb-3" style="font-family:'Space Grotesk',sans-serif;">Share & Reflect with Others</h4>
+            <p class="text-secondary small mb-0">
+              Share your reasoning, reflect on different outcomes, and discuss decisions with others. This space turns individual choices
+              into collective insight and deeper understanding—supporting learning, dialogue, and responsible leadership.
+            </p>
+          </div>
+
+          <div class="timeline-mid"><div class="timeline-dot" data-aos="zoom-in" data-aos-duration="800" data-aos-delay="200"></div></div>
+
+          <div class="tech-card-img" data-aos="fade-left" data-aos-duration="950" data-aos-delay="160">
+            <img src="..static/about4.png" alt="Share and Reflect" />
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta" class="py-5" style="position:relative; z-index:2;">
+    <div class="container py-5">
+      <div class="row justify-content-center text-center">
+        <div class="col-lg-9">
+
+          <div class="cta-box p-5"
+               data-aos="zoom-in-up"
+               data-aos-duration="950">
+            <div class="mb-3"
+                 data-aos="fade-down"
+                 data-aos-duration="850"
+                 data-aos-delay="120"
+                 style="font-family:'JetBrains Mono',monospace; letter-spacing:3px; font-size:.75rem; color:var(--accent-cyan);">
+              LAUNCH TIMELINE
+            </div>
+
+            <h2 class="fw-bold mb-4"
+                data-aos="zoom-in"
+                data-aos-duration="900"
+                data-aos-delay="180"
+                style="font-family:'Space Grotesk',sans-serif; font-size:2.6rem;">
+              Preparing for <span class="tech-gradient-text">Early 2026</span>
+            </h2>
+
+            <p class="text-secondary mb-5"
+               data-aos="fade-up"
+               data-aos-duration="900"
+               data-aos-delay="240"
+               style="max-width:720px; margin:0 auto;">
+              Project Horizon is currently in active development as a prototype.
+              The platform will open in early 2026 with interactive policy simulations,
+              impact dashboards, and collaborative decision analysis tools.
+            </p>
+
+            <div class="d-flex flex-column flex-sm-row gap-4 justify-content-center"
+                 data-aos="fade-up"
+                 data-aos-duration="900"
+                 data-aos-delay="320">
+              <button class="btn btn-tech" disabled style="opacity:.6; cursor:not-allowed;">
+                Access Opens 2026
+              </button>
+
+              <span class="coming-soon-btn align-self-center">
+                Web release • Early 2026
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer data-aos="fade-up" data-aos-duration="850">
+    <div class="container">
+      <p class="footer-title mb-0">PROJECT HORIZON</p>
+      <p class="footer-sub mb-0">AI Socio-Economic Matrix • Academic Prototype</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- AOS -->
+  <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+  <script>
+    AOS.init({
+      once: true,          // animate only once (clean + professional)
+      duration: 900,
+      easing: 'ease-out-cubic',
+      offset: 90
+    });
+  </script>
+</body>
+</html>

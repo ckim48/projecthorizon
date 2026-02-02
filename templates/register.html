@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register | Project Horizon</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+
+  <style>
+    :root{
+      --bg:#020204;
+      --cyan:#0dcaf0;
+      --edge:rgba(255,255,255,.10);
+      --glass:rgba(255,255,255,.03);
+      --muted:rgba(255,255,255,.74);
+      --danger:#ff5b6e;
+      --ok:#38d996;
+    }
+    body{
+      background:radial-gradient(circle at center,#0a1128 0%,#020204 100%);
+      color:#fff;
+      font-family:Inter,system-ui,sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:40px 16px;
+    }
+    .card-glass{
+      width:min(980px,100%);
+      border:1px solid var(--edge);
+      background:var(--glass);
+      backdrop-filter:blur(14px);
+      border-radius:18px;
+      box-shadow:0 0 80px rgba(13,202,240,.08);
+      overflow:hidden;
+    }
+    .left{
+      padding:34px;
+      border-right:1px solid rgba(255,255,255,.06);
+      background:linear-gradient(180deg, rgba(13,202,240,.06), transparent 60%);
+    }
+    .right{ padding:34px; }
+    .kicker{
+      font-family:"JetBrains Mono",monospace;
+      letter-spacing:3px;
+      font-size:.75rem;
+      color:var(--cyan);
+    }
+    h1{
+      font-family:"Space Grotesk",sans-serif;
+      font-weight:700;
+      margin:10px 0 10px;
+    }
+    .muted{ color:var(--muted); }
+    label{
+      font-family:"JetBrains Mono",monospace;
+      font-size:.72rem;
+      letter-spacing:1.8px;
+      color:rgba(255,255,255,.72);
+      text-transform:uppercase;
+    }
+    .form-control, .form-select{
+      background:rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.12);
+      color:#fff;
+      border-radius:12px;
+      padding:12px 14px;
+    }
+    .form-control:focus, .form-select:focus{
+      border-color:rgba(13,202,240,.60);
+      box-shadow:0 0 0 .2rem rgba(13,202,240,.10);
+      background:rgba(255,255,255,.03);
+      color:#fff;
+    }
+    .form-control::placeholder{
+      color: rgba(255,255,255,.62) !important;
+      opacity: 1 !important;
+    }
+
+    .field-msg{
+      margin-top:6px;
+      font-size:.9rem;
+      color:rgba(255,255,255,.62);
+      min-height:18px;
+    }
+    .is-bad{
+      border-color:rgba(255,91,110,.70) !important;
+      box-shadow:0 0 0 .2rem rgba(255,91,110,.08) !important;
+    }
+    .is-good{
+      border-color:rgba(56,217,150,.70) !important;
+      box-shadow:0 0 0 .2rem rgba(56,217,150,.08) !important;
+    }
+    .msg-bad{ color:rgba(255,91,110,.95); }
+    .msg-good{ color:rgba(56,217,150,.92); }
+
+    #interestChips .chip{
+      font-family:Inter,system-ui,sans-serif;
+      text-transform:none;
+      letter-spacing:0;
+      color:rgba(255,255,255,.86);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.02);
+      border-radius:999px;
+      padding:10px 12px;
+      cursor:pointer;
+      user-select:none;
+      transition:background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease, color .18s ease;
+      font-size:.95rem;
+      line-height:1.15;
+    }
+    #interestChips .chip input{
+      position:absolute;
+      opacity:0;
+      pointer-events:none;
+      width:0;height:0;
+    }
+    #interestChips .chip.active{
+      border-color:rgba(13,202,240,.95);
+      background:rgba(13,202,240,.28);
+      color:#eaffff;
+      box-shadow:0 0 0 2px rgba(13,202,240,.14) inset, 0 0 22px rgba(13,202,240,.16);
+      transform:translateY(-1px);
+    }
+
+    .btn-tech{
+      background:transparent;
+      border:1px solid var(--cyan);
+      color:var(--cyan);
+      padding:12px 18px;
+      font-family:"JetBrains Mono",monospace;
+      border-radius:12px;
+      transition:.25s ease;
+    }
+    .btn-tech:hover{
+      background:var(--cyan);
+      color:#000;
+      box-shadow:0 0 25px rgba(13,202,240,.35);
+    }
+    .btn-ghost{
+      background:rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.82);
+      padding:12px 18px;
+      font-family:"JetBrains Mono",monospace;
+      border-radius:12px;
+      transition:.25s ease;
+    }
+    .btn-ghost:hover{
+      border-color:rgba(255,255,255,.22);
+      background:rgba(255,255,255,.04);
+      color:#fff;
+    }
+
+    .progress-dots{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-top:14px;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background:rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .dot.active{
+      background:rgba(13,202,240,.85);
+      box-shadow:0 0 16px rgba(13,202,240,.35);
+      border-color:rgba(13,202,240,.55);
+    }
+
+    .step{ display:none; }
+    .step.active{ display:block; }
+
+    .hr-soft{
+      height:1px; background:rgba(255,255,255,.10); border:0; margin:16px 0;
+    }
+    .slider-label{
+      display:flex; justify-content:space-between; align-items:center;
+      font-size:.95rem;
+      color:var(--muted);
+    }
+    input[type="range"]{ width:100%; }
+    .hint{ font-size:.92rem; color:rgba(255,255,255,.62); }
+
+    .mini-card{
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.02);
+      border-radius:14px;
+      padding:14px 16px;
+      white-space:pre-line;
+    }
+    .mini-title{
+      font-family:"JetBrains Mono",monospace;
+      font-size:.72rem;
+      letter-spacing:1.8px;
+      color:rgba(255,255,255,.72);
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
+
+    .pw-wrap{ position:relative; }
+    .pw-toggle{
+      position:absolute;
+      top:50%;
+      right:10px;
+      transform:translateY(-50%);
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.03);
+      color:rgba(255,255,255,.80);
+      border-radius:10px;
+      padding:6px 10px;
+      font-size:.85rem;
+      cursor:pointer;
+      user-select:none;
+    }
+    .pw-toggle:hover{ background:rgba(255,255,255,.06); }
+
+    @media (max-width: 991px){
+      .left{ border-right:0; border-bottom:1px solid rgba(255,255,255,.06); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card-glass">
+    <div class="row g-0">
+
+      <div class="col-lg-4 left">
+        <div class="kicker">PROJECT HORIZON</div>
+        <h1>Create Profile</h1>
+        <p class="muted mb-0">Short setup. One step at a time.</p>
+
+        <div class="progress-dots" aria-label="progress">
+          <div class="dot active" id="dot1"></div>
+          <div class="dot" id="dot2"></div>
+          <div class="dot" id="dot3"></div>
+          <div class="dot" id="dot4"></div>
+        </div>
+
+        <hr class="hr-soft"/>
+        <div class="muted" id="stepHint">Step 1/4: Account</div>
+      </div>
+
+      <div class="col-lg-8 right">
+        <form id="regForm" novalidate>
+
+          <div class="step active" id="step1">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="name">Name</label>
+                <input class="form-control" id="name" name="name" placeholder="Your name" required>
+                <div class="field-msg" id="m_name"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="email">Email</label>
+                <input class="form-control" id="email" name="email" type="email" placeholder="name@email.com" required>
+                <div class="field-msg" id="m_email"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="password">Password</label>
+                <div class="pw-wrap">
+                  <input class="form-control" id="password" name="password" type="password"
+                         placeholder="Create a password" required minlength="8">
+                  <button type="button" class="pw-toggle" id="pwToggle">Show</button>
+                </div>
+                <div class="field-msg" id="m_password"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="password2">Confirm password</label>
+                <div class="pw-wrap">
+                  <input class="form-control" id="password2" name="password2" type="password"
+                         placeholder="Confirm password" required minlength="8">
+                  <button type="button" class="pw-toggle" id="pwToggle2">Show</button>
+                </div>
+                <div class="field-msg" id="m_password2"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Role</label>
+                <select class="form-select" name="role">
+                  <option value="student" selected>Student</option>
+                  <option value="educator">Educator</option>
+                  <option value="policymaker">Policymaker</option>
+                  <option value="community_leader">Community leader</option>
+                  <option value="researcher">Researcher</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Region / Context</label>
+                <input class="form-control" name="region" placeholder="e.g., Seoul / local district">
+              </div>
+            </div>
+          </div>
+
+          <div class="step" id="step2">
+            <div class="mb-2">
+              <label class="form-label">Topics you care about</label>
+              <div class="hint">Pick a few. This selects scenarios.</div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2" id="interestChips">
+              <label class="chip"><input type="checkbox" value="labor"> Labor & jobs</label>
+              <label class="chip"><input type="checkbox" value="education"> Education</label>
+              <label class="chip"><input type="checkbox" value="healthcare"> Healthcare</label>
+              <label class="chip"><input type="checkbox" value="energy"> Energy</label>
+              <label class="chip"><input type="checkbox" value="welfare"> Welfare</label>
+              <label class="chip"><input type="checkbox" value="regulation"> Regulation</label>
+              <label class="chip"><input type="checkbox" value="privacy"> Privacy</label>
+              <label class="chip"><input type="checkbox" value="inequality"> Inequality</label>
+            </div>
+
+            <div class="hint mt-3">Tip: 2–4 topics works best.</div>
+          </div>
+
+          <div class="step" id="step3">
+            <div class="mb-2">
+              <label class="form-label">Decision priorities</label>
+              <div class="hint">Set what matters most. The dashboard ranks outcomes using these weights.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <div class="slider-label"><span>Equity</span><span id="v_equity">3</span></div>
+                <input class="form-range" type="range" min="1" max="5" value="3" id="equity">
+              </div>
+              <div class="col-md-6">
+                <div class="slider-label"><span>Economic growth</span><span id="v_growth">3</span></div>
+                <input class="form-range" type="range" min="1" max="5" value="3" id="growth">
+              </div>
+              <div class="col-md-6">
+                <div class="slider-label"><span>Innovation</span><span id="v_innovation">3</span></div>
+                <input class="form-range" type="range" min="1" max="5" value="3" id="innovation">
+              </div>
+              <div class="col-md-6">
+                <div class="slider-label"><span>Stability</span><span id="v_stability">3</span></div>
+                <input class="form-range" type="range" min="1" max="5" value="3" id="stability">
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Risk level</label>
+                <div class="slider-label"><span class="hint">1 cautious</span><span id="riskVal">3</span></div>
+                <input class="form-range" type="range" min="1" max="5" value="3" id="risk">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">Complexity</label>
+                <select class="form-select" id="complexity">
+                  <option value="simple">Simple</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" id="step4">
+            <div class="mb-3">
+              <label class="form-label">Review</label>
+              <div class="hint">Confirm before creating your profile.</div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="mini-card">
+                  <div class="mini-title">Basic</div>
+                  <div class="muted" id="rv_basic"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mini-card">
+                  <div class="mini-title">Topics</div>
+                  <div class="muted" id="rv_topics"></div>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="mini-card">
+                  <div class="mini-title">Priorities</div>
+                  <div class="muted" id="rv_priorities"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="msg" class="mt-3 muted" style="min-height:22px;"></div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="button" class="btn btn-ghost w-100" id="backBtn" disabled>Back</button>
+            <button type="button" class="btn btn-tech w-100" id="nextBtn">Next</button>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // ====== PASSWORD SHOW/HIDE ======
+  const togglePw = (btnId, inputId) => {
+    const btn = document.getElementById(btnId);
+    const input = document.getElementById(inputId);
+    btn.addEventListener('click', ()=>{
+      const isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      btn.textContent = isPw ? 'Hide' : 'Show';
+    });
+  };
+  togglePw('pwToggle','password');
+  togglePw('pwToggle2','password2');
+
+  // ====== CHIPS ======
+  const chips = Array.from(document.querySelectorAll('#interestChips .chip'));
+  chips.forEach(chip => {
+    const input = chip.querySelector('input');
+    const sync = () => chip.classList.toggle('active', input.checked);
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      input.checked = !input.checked;
+      sync();
+    });
+    sync();
+  });
+
+  // ====== SLIDER LABELS ======
+  const bind = (id, out) => {
+    const el = document.getElementById(id);
+    const o = document.getElementById(out);
+    const sync = () => o.textContent = el.value;
+    el.addEventListener('input', sync);
+    sync();
+  };
+  bind('equity','v_equity');
+  bind('growth','v_growth');
+  bind('innovation','v_innovation');
+  bind('stability','v_stability');
+  bind('risk','riskVal');
+
+  // ====== LIVE VALIDATION (STEP 1) ======
+  const $ = (id) => document.getElementById(id);
+
+  const setState = (el, msgEl, ok, msg) => {
+    el.classList.remove('is-bad','is-good');
+    msgEl.classList.remove('msg-bad','msg-good');
+
+    if(ok === null){
+      msgEl.textContent = "";
+      return;
+    }
+    if(ok){
+      el.classList.add('is-good');
+      msgEl.classList.add('msg-good');
+    }else{
+      el.classList.add('is-bad');
+      msgEl.classList.add('msg-bad');
+    }
+    msgEl.textContent = msg || "";
+  };
+
+  const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  const validateName = () => {
+    const v = $('name').value.trim();
+    if(!v) return {ok:false, msg:"Name is required."};
+    if(v.length < 2) return {ok:false, msg:"Name is too short."};
+    return {ok:true, msg:"Looks good."};
+  };
+
+  const validateEmail = () => {
+    const v = $('email').value.trim();
+    if(!v) return {ok:false, msg:"Email is required."};
+    if(!isEmail(v)) return {ok:false, msg:"Enter a valid email."};
+    return {ok:true, msg:"Valid email."};
+  };
+
+  // ✅ MIN 8 CHARS enforced here
+  const validatePw = () => {
+    const v = $('password').value;
+    if(!v) return {ok:false, msg:"Password is required."};
+    if(v.length < 8) return {ok:false, msg:"Password must be at least 8 characters."};
+    return {ok:true, msg:"Strong enough."};
+  };
+
+  const validatePw2 = () => {
+    const v = $('password2').value;
+    if(!v) return {ok:false, msg:"Please confirm your password."};
+    if(v !== $('password').value) return {ok:false, msg:"Passwords do not match."};
+    // also enforce length in confirm field, so it never shows ok if too short
+    if(v.length < 8) return {ok:false, msg:"Password must be at least 8 characters."};
+    return {ok:true, msg:"Matched."};
+  };
+
+  const wireLive = (inputId, msgId, fn) => {
+    const el = $(inputId);
+    const msgEl = $(msgId);
+
+    const run = () => {
+      const {ok, msg} = fn();
+      const touched = el.dataset.touched === "1";
+      if(!touched && !el.value) { setState(el, msgEl, null, ""); return; }
+      setState(el, msgEl, ok, msg);
+    };
+
+    el.addEventListener('input', run);
+    el.addEventListener('blur', () => { el.dataset.touched = "1"; run(); });
+    return run;
+  };
+
+  const runName = wireLive('name','m_name', validateName);
+  const runEmail = wireLive('email','m_email', validateEmail);
+  const runPw = wireLive('password','m_password', validatePw);
+  const runPw2 = wireLive('password2','m_password2', validatePw2);
+
+  $('password').addEventListener('input', ()=>{ runPw2(); });
+
+  const validateStep1Block = () => {
+    $('name').dataset.touched = "1";
+    $('email').dataset.touched = "1";
+    $('password').dataset.touched = "1";
+    $('password2').dataset.touched = "1";
+
+    runName(); runEmail(); runPw(); runPw2();
+
+    return validateName().ok && validateEmail().ok && validatePw().ok && validatePw2().ok;
+  };
+
+  // ====== WIZARD ======
+  const steps = ["step1","step2","step3","step4"];
+  const hints = [
+    "Step 1/4: Account",
+    "Step 2/4: Pick topics",
+    "Step 3/4: Set priorities",
+    "Step 4/4: Review & create"
+  ];
+  let cur = 0;
+
+  const show = (i) => {
+    steps.forEach((id, idx)=>{
+      document.getElementById(id).classList.toggle("active", idx === i);
+    });
+    for(let d=1; d<=4; d++){
+      document.getElementById("dot"+d).classList.toggle("active", d === i+1);
+    }
+    document.getElementById("stepHint").textContent = hints[i];
+
+    document.getElementById("backBtn").disabled = (i === 0);
+    document.getElementById("nextBtn").textContent = (i === steps.length-1) ? "Create Profile" : "Next";
+
+    if(i === 3) fillReview();
+  };
+
+  const getInterests = () =>
+    Array.from(document.querySelectorAll('#interestChips input'))
+      .filter(x=>x.checked)
+      .map(x=>x.value);
+
+  const fillReview = () => {
+    const form = document.getElementById("regForm");
+
+    document.getElementById("rv_basic").textContent =
+      `Name: ${form.name.value || "—"}\nEmail: ${form.email.value || "—"}\nRole: ${form.role.value || "—"}\nRegion: ${form.region.value || "—"}`;
+
+    const topics = getInterests();
+    document.getElementById("rv_topics").textContent = topics.length ? topics.join(", ") : "—";
+
+    const pri = {
+      equity: document.getElementById("equity").value,
+      growth: document.getElementById("growth").value,
+      innovation: document.getElementById("innovation").value,
+      stability: document.getElementById("stability").value,
+      risk: document.getElementById("risk").value,
+      complexity: document.getElementById("complexity").value
+    };
+    document.getElementById("rv_priorities").textContent =
+      `Equity ${pri.equity}, Growth ${pri.growth}, Innovation ${pri.innovation}, Stability ${pri.stability} • Risk ${pri.risk} • ${pri.complexity}`;
+  };
+
+  document.getElementById("backBtn").addEventListener("click", ()=>{
+    cur = Math.max(0, cur-1);
+    show(cur);
+  });
+
+  document.getElementById("nextBtn").addEventListener("click", async ()=>{
+    if(cur === 0){
+      const ok = validateStep1Block();
+      if(!ok) return;
+    }
+
+    if(cur === steps.length-1){
+      const msg = document.getElementById("msg");
+      msg.textContent = "Creating profile...";
+
+      const form = document.getElementById("regForm");
+      const payload = {
+        name: form.name.value.trim(),
+        email: form.email.value.trim(),
+        password: form.password.value,
+        role: form.role.value,
+        region: form.region.value.trim(),
+        interests: getInterests(),
+        values: {
+          equity: document.getElementById("equity").value,
+          growth: document.getElementById("growth").value,
+          innovation: document.getElementById("innovation").value,
+          stability: document.getElementById("stability").value
+        },
+        risk_level: document.getElementById("risk").value,
+        complexity: document.getElementById("complexity").value
+      };
+
+      try{
+        const res = await fetch('/register', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        let data = {};
+        try { data = await res.json(); } catch(_) {}
+
+        if(!res.ok){
+          msg.textContent = (data && data.message) ? data.message : "Registration failed.";
+          return;
+        }
+        msg.textContent = "Profile created. Redirecting...";
+        window.location.href = data.redirect || "/";
+      }catch(e){
+        msg.textContent = "Network error. Please try again.";
+      }
+      return;
+    }
+
+    cur = Math.min(steps.length-1, cur+1);
+    show(cur);
+  });
+
+  show(cur);
+</script>
+</body>
+</html>
