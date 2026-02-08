@@ -1688,7 +1688,7 @@ def _clone_scenario_for_run(conn: sqlite3.Connection, scenario_id: int, user_id:
 # ============================================================
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return redirect(url_for('index'))
 @app.route("/tutorial")
 def tutorial():
     return render_template("tutorial.html")
@@ -2239,24 +2239,44 @@ def api_profile_mbti():
     if not user_id:
         return jsonify({"status": "error", "message": "Not logged in."}), 401
 
+    # ---- paging ----
+    try:
+        page = int(request.args.get("page", "1") or 1)
+    except Exception:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", "5") or 5)
+    except Exception:
+        per_page = 5
+
+    page = max(1, page)
+    per_page = max(1, min(50, per_page))
+    offset = (page - 1) * per_page
+
     with get_conn() as conn:
         cur = conn.cursor()
 
-        # recent runs
+        # total runs (IMPORTANT: this drives the pager)
+        cur.execute("SELECT COUNT(*) AS c FROM runs WHERE user_id = ?", (user_id,))
+        total_runs = int(cur.fetchone()["c"] or 0)
+
+        # newest date (for sidebar)
+        cur.execute("SELECT created_at FROM runs WHERE user_id=? ORDER BY id DESC LIMIT 1", (user_id,))
+        newest_row = cur.fetchone()
+        newest_date = (newest_row["created_at"][:10] if newest_row and newest_row["created_at"] else None)
+
+        # paged runs
         cur.execute("""
             SELECT r.id AS run_id, r.created_at, r.mbti_type, r.mbti_scores_json, s.scenario_json
             FROM runs r
             JOIN scenarios s ON s.id = r.scenario_id
             WHERE r.user_id = ?
             ORDER BY r.id DESC
-            LIMIT 20
-        """, (user_id,))
+            LIMIT ? OFFSET ?
+        """, (user_id, per_page, offset))
         rows = cur.fetchall()
 
         runs = []
-        totals = {"SU": 0.0, "FG": 0.0, "HA": 0.0, "PC": 0.0}
-        n = 0
-
         for r in rows:
             try:
                 scen = json.loads(r["scenario_json"] or "{}")
@@ -2271,43 +2291,86 @@ def api_profile_mbti():
             except Exception:
                 scores = {}
 
-            mbti_type = r["mbti_type"] or None
-
-            # Only aggregate runs that have mbti_scores (i.e., at least one step signal)
-            if scores:
-                for k in totals.keys():
-                    try:
-                        totals[k] += float(scores.get(k, 0.0))
-                    except Exception:
-                        pass
-                n += 1
-
             runs.append({
                 "run_id": r["run_id"],
                 "created_at": r["created_at"],
                 "scenario_title": title,
-                "mbti_type": mbti_type,
+                "mbti_type": (r["mbti_type"] or None),
                 "mbti_scores": scores,
             })
 
-        overall_scores = {}
-        if n > 0:
-            overall_scores = {k: totals[k] / float(n) for k in totals.keys()}
+        # overall avg mbti_scores_json across all runs (optional but useful)
+        cur.execute("""
+            SELECT mbti_scores_json
+            FROM runs
+            WHERE user_id = ? AND COALESCE(mbti_scores_json,'') <> ''
+        """, (user_id,))
+        score_rows = cur.fetchall()
 
-        overall_type = axes_to_type(overall_scores) if overall_scores else None
+        totals = {"SU": 0.0, "FG": 0.0, "HA": 0.0, "PC": 0.0}
+        n_scores = 0
+        for rr in score_rows:
+            try:
+                sc = json.loads(rr["mbti_scores_json"] or "{}")
+                if not isinstance(sc, dict):
+                    continue
+            except Exception:
+                continue
+            if not sc:
+                continue
+            for k in totals.keys():
+                try:
+                    totals[k] += float(sc.get(k, 0.0))
+                except Exception:
+                    pass
+            n_scores += 1
+
+        overall_scores = {}
+        if n_scores > 0:
+            overall_scores = {k: (totals[k] / float(n_scores)) for k in totals.keys()}
+
+        # Dominant archetype = most frequent derived type from step signals (matches bar max)
+        cur.execute("SELECT axis_json FROM run_step_signals WHERE user_id = ?", (user_id,))
+        ax_rows = cur.fetchall()
+
+        type_counts = {}
+        for rr in ax_rows:
+            try:
+                ax = json.loads(rr["axis_json"] or "{}")
+                if not isinstance(ax, dict):
+                    continue
+            except Exception:
+                continue
+            try:
+                t = axes_to_type({
+                    "SU": float(ax.get("SU", 0.0)),
+                    "FG": float(ax.get("FG", 0.0)),
+                    "HA": float(ax.get("HA", 0.0)),
+                    "PC": float(ax.get("PC", 0.0)),
+                })
+                if t:
+                    type_counts[t] = type_counts.get(t, 0) + 1
+            except Exception:
+                pass
+
+        top_type = None
+        if type_counts:
+            top_type = sorted(type_counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+
+        overall_type = top_type or (axes_to_type(overall_scores) if overall_scores else None)
 
     return jsonify({
         "status": "success",
-        "user": {
-            "id": user_id,
-            "name": session.get("user_name") or "Student"
+        "user": {"id": user_id, "name": session.get("user_name") or "Student"},
+        "overall": {"mbti_type": overall_type, "mbti_scores": overall_scores, "runs_count": n_scores},
+        "runs": runs,
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total_runs": total_runs,      # ✅ MUST exist for pager
+            "newest_date": newest_date
         },
-        "overall": {
-            "mbti_type": overall_type,
-            "mbti_scores": overall_scores,
-            "runs_count": n
-        },
-        "runs": runs
+        "summary": {"top_type": (top_type or "—")}
     })
 
 

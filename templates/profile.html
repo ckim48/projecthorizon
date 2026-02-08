@@ -619,9 +619,9 @@
       renderRadar(st.summary?.avg_axes || {});
       renderValues(st.distributions?.primary_value || {});
 
-      // NEW charts (safe fallback if your API does not provide these yet)
-      renderTypeDist(st.distributions?.step_type || st.distributions?.mbti_type || {});
-      renderTrend(st.trends?.monthly_axes || st.trends?.monthly_avg_axes || []);
+
+      renderTypeDist(st.distributions?.type_counts || {});
+      renderTrend(st.series?.monthly_axes || []);
     } else {
       if ($("topValue")) $("topValue").textContent = "—";
       if ($("valueN")) $("valueN").textContent = "0";
