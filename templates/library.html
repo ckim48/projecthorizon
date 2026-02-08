@@ -28,7 +28,6 @@
   </div>
 </div>
 
-<!-- Floating Remove All button (admin/moderator only) -->
 <div id="removeAllWrap" style="display:none; position:fixed; right:22px; bottom:22px; z-index:9999;">
   <button id="removeAllBtn" class="btn-danger-soft" type="button" style="box-shadow:0 18px 40px rgba(0,0,0,.35);">
     Remove all
@@ -40,8 +39,8 @@
     --cyan:#0dcaf0;
     --muted:rgba(255,255,255,.72);
     --danger:#ef4444;
-    --danger-bg: rgba(239,68,68,.10);
-    --danger-bd: rgba(239,68,68,.30);
+    --danger-bg: rgba(239,68,68,.15);
+    --danger-bd: rgba(239,68,68,.40);
   }
   .kicker{
     font-family:"JetBrains Mono",monospace;
@@ -53,17 +52,54 @@
   .muted{ color:var(--muted); }
   .hr-soft{ height:1px; background:rgba(255,255,255,.08); border:0; margin:18px 0; }
 
+  /* CARD BASE */
   .card-scen{
+    position: relative;
     border-radius:18px;
     border:1px solid rgba(255,255,255,.10);
     background:rgba(255,255,255,.02);
     overflow:hidden;
     transition: .18s ease;
+    height: 100%;
   }
   .card-scen:hover{
     transform: translateY(-2px);
     border-color: rgba(13,202,240,.45);
     background: rgba(13,202,240,.06);
+  }
+
+  /* TOP RIGHT TRASH ICON */
+  .admin-actions-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 20;
+  }
+  .btn-remove-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--danger-bd);
+    background: rgba(239, 68, 68, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--danger);
+    transition: all 0.2s ease;
+    padding: 0;
+    cursor: pointer;
+  }
+  .btn-remove-circle:hover {
+    background: var(--danger);
+    color: white;
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  }
+  .btn-remove-circle svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
   }
 
   .thumb{
@@ -88,6 +124,7 @@
     letter-spacing:.2px;
     margin:0 0 6px;
     font-size:1.05rem;
+    color: #fff;
   }
   .sub{
     font-family:"JetBrains Mono",monospace;
@@ -97,227 +134,101 @@
     color: rgba(255,255,255,.55);
   }
 
-  /* ---------- MATCHED ACTION BUTTONS (single source of truth) ---------- */
   .actions{
     margin-top:12px;
     display:flex;
     gap:10px;
-    flex-wrap:wrap;
-    align-items:center;
   }
 
-  /* base: ALL sizing/layout lives here */
   .btn-action{
+    flex: 1;
     border-radius:12px;
-    padding:10px 14px;
+    padding:10px;
     min-height:44px;
-    min-width:140px;
-
     font-weight:800;
-    letter-spacing:.2px;
-
+    font-size: 0.9rem;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    gap:8px;
-
     text-decoration:none;
-    user-select:none;
-    -webkit-tap-highlight-color: transparent;
-
-    transition:
-      transform .12s ease,
-      background .18s ease,
-      border-color .18s ease,
-      box-shadow .18s ease;
+    transition: .18s ease;
   }
-  .btn-action:active{ transform: translateY(1px); }
 
-  /* Play (neutral glass) — VISUAL ONLY */
   .btn-play{
-    width: 100%;
     background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.15);
     color:#fff;
-    box-shadow: 0 10px 26px rgba(0,0,0,.18);
   }
   .btn-play:hover{
-    background: rgba(255,255,255,.10);
-    border-color: rgba(255,255,255,.28);
-    box-shadow: 0 14px 34px rgba(0,0,0,.22);
+    background: rgba(255,255,255,.12);
+    border-color: rgba(255,255,255,.30);
+    color: #fff;
   }
 
-  /* Visuals (cyan accent) — VISUAL ONLY */
   .btn-tech{
-    background: linear-gradient(135deg, rgba(13,202,240,.22), rgba(13,202,240,.08));
-    border:1px solid rgba(13,202,240,.40);
+    background: linear-gradient(135deg, rgba(13,202,240,.20), rgba(13,202,240,.05));
+    border: 1px solid rgba(13,202,240,.35);
     color:#fff;
-    box-shadow: 0 10px 26px rgba(0,0,0,.18);
   }
   .btn-tech:hover{
-    border-color: rgba(13,202,240,.65);
-    background: rgba(13,202,240,.14);
+    border-color: rgba(13,202,240,.60);
+    background: rgba(13,202,240,.15);
     color:white;
-    box-shadow: 0 14px 34px rgba(0,0,0,.22);
   }
 
-  /* top "Start a new scenario" keeps same brand but bootstrap-like sizing */
   .btn-tech-top{
-    background: linear-gradient(135deg, rgba(13,202,240,.22), rgba(13,202,240,.08));
-    border:1px solid rgba(13,202,240,.40);
+    background: linear-gradient(135deg, rgba(13,202,240,.20), rgba(13,202,240,.05));
+    border: 1px solid rgba(13,202,240,.35);
     color:#fff;
     border-radius:12px;
-    padding:10px 12px;
+    padding:10px 20px;
     font-weight:800;
     text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-  }
-  .btn-tech-top:hover{
-    border-color: rgba(13,202,240,.65);
-    background: rgba(13,202,240,.14);
   }
 
-  /* Admin controls */
   .btn-danger-soft{
     border-radius:12px;
-    padding:10px 12px;
-    min-height:44px;
+    padding:10px 20px;
     border:1px solid var(--danger-bd);
     background: var(--danger-bg);
     color:#fff;
     font-weight:800;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    transition: .18s ease;
-  }
-  .btn-danger-soft:hover{
-    border-color: rgba(239,68,68,.55);
-    background: rgba(239,68,68,.16);
-  }
-
-  .admin-row{
-    margin-top:10px;
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    align-items:center;
-    justify-content:space-between;
-  }
-  .badge-admin{
-    font-family:"JetBrains Mono",monospace;
-    letter-spacing:1px;
-    font-size:.70rem;
-    text-transform:uppercase;
-    color: rgba(255,255,255,.60);
   }
 </style>
 
 <script>
   const byId = (id)=>document.getElementById(id);
-
-  // robust admin flag (Jinja renders 0/1)
   const IS_ADMIN = {{ 1 if (session.get('role') == 'admin') else 0 }};
   const IS_MODERATOR = {{ 1 if (session.get('is_moderator') == 1) else 0 }};
-  const USER_ID = {{ session.get('user_id') or 'null' }};
 
-  // Simple inline placeholder (SVG data-uri) if cover_url missing.
   function fallbackCoverDataUri(title, subtitle){
     const t = (title || "Project Horizon").toString().slice(0, 72).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const s = (subtitle || "Scenario cover").toString().slice(0, 110).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const svg =
-`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="640">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0b0f17"/>
-      <stop offset="1" stop-color="#111a2a"/>
-    </linearGradient>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#g)"/>
-  <rect x="48" y="48" width="928" height="544" rx="26" fill="rgba(255,255,255,0.05)" stroke="rgba(13,202,240,0.35)"/>
-  <text x="88" y="168" fill="rgba(13,202,240,0.95)" font-family="monospace" font-size="34" letter-spacing="6">PROJECT HORIZON</text>
-  <text x="88" y="260" fill="rgba(255,255,255,0.92)" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="54" font-weight="700">${t}</text>
-  <text x="88" y="330" fill="rgba(255,255,255,0.70)" font-family="system-ui, -apple-system, Segoe UI, Roboto" font-size="28">${s}</text>
-</svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="640"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b0f17"/><stop offset="1" stop-color="#111a2a"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><rect x="48" y="48" width="928" height="544" rx="26" fill="rgba(255,255,255,0.05)" stroke="rgba(13,202,240,0.35)"/><text x="88" y="168" fill="rgba(13,202,240,0.95)" font-family="monospace" font-size="34" letter-spacing="6">PROJECT HORIZON</text><text x="88" y="260" fill="rgba(255,255,255,0.92)" font-family="system-ui" font-size="54" font-weight="700">${t}</text><text x="88" y="330" fill="rgba(255,255,255,0.70)" font-family="system-ui" font-size="28">${s}</text></svg>`;
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   }
 
-  function fmtDate(iso){
-    if(!iso) return "";
-    return String(iso).slice(0,10);
-  }
+  function fmtDate(iso){ return iso ? String(iso).slice(0,10) : ""; }
 
   async function removeScenario(scenarioId, btn){
-    const canRemove = IS_ADMIN || (btn && btn.dataset && btn.dataset.canRemove === "1");
-    if(!canRemove) return;
-    if(!confirm("Remove this scenario from the library?")) return;
-
+    if(!confirm("Are you sure you want to remove this scenario?")) return;
     try{
-      if(btn){ btn.disabled = true; btn.textContent = "Removing..."; }
-
-      const res = await fetch(`/admin/scenario/${scenarioId}/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-
-      if(!res.ok){
-        let msg = "Failed to remove scenario.";
-        try{
-          const j = await res.json();
-          if(j && j.error) msg = j.error;
-        }catch(_e){}
-        alert(msg);
-        if(btn){ btn.disabled = false; btn.textContent = "Remove"; }
-        return;
+      const res = await fetch(`/admin/scenario/${scenarioId}/remove`, { method: "POST" });
+      if(res.ok){
+        document.querySelector(`[data-scenario-id="${scenarioId}"]`).remove();
+        if(byId('grid').children.length === 0) byId('empty').style.display = 'block';
+      } else {
+        alert("Action failed.");
       }
-
-      const cardEl = document.querySelector(`[data-scenario-id="${scenarioId}"]`);
-      if(cardEl) cardEl.remove();
-
-      const grid = byId('grid');
-      if(grid && grid.children.length === 0){
-        byId('empty').style.display = 'block';
-      }
-    }catch(e){
-      alert("Failed to remove scenario.");
-      if(btn){ btn.disabled = false; btn.textContent = "Remove"; }
-    }
+    }catch(e){ alert("Error connecting to server."); }
   }
 
   async function removeAll(){
-    if(!(IS_ADMIN || IS_MODERATOR)) return;
-    const msg = "Remove ALL scenarios from the library? This will hide every scenario for everyone (is_public=0).";
-    if(!confirm(msg)) return;
-
-    const btn = document.getElementById("removeAllBtn");
-    if(btn){ btn.disabled = true; btn.textContent = "Removing..."; }
-
+    if(!confirm("Remove ALL scenarios?")) return;
     try{
-      const res = await fetch("/admin/scenario/remove_all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      if(!res.ok){
-        let err = "Failed to remove all.";
-        try{ const j = await res.json(); if(j && j.error) err = j.error; }catch(_e){}
-        alert(err);
-        if(btn){ btn.disabled = false; btn.textContent = "Remove all"; }
-        return;
-      }
-      // Clear grid and show empty state
-      const grid = byId("grid");
-      if(grid) grid.innerHTML = "";
-      const empty = byId("empty");
-      if(empty){ empty.style.display = "block"; empty.textContent = "No shared scenarios yet."; }
-      const wrap = document.getElementById("removeAllWrap");
-      if(wrap) wrap.style.display = "none";
-    }catch(e){
-      alert("Failed to remove all.");
-      if(btn){ btn.disabled = false; btn.textContent = "Remove all"; }
-    }
+      const res = await fetch("/admin/scenario/remove_all", { method: "POST" });
+      if(res.ok) window.location.reload();
+    } catch(e) { alert("Network error."); }
   }
 
   function card(item){
@@ -325,37 +236,31 @@
     col.className = "col-12 col-sm-6 col-lg-4";
     col.setAttribute("data-scenario-id", item.id);
 
-    const title = item.title || "Untitled Scenario";
+    const title = item.title || "Untitled";
     const subtitle = (item.author ? item.author + " · " : "") + fmtDate(item.created_at);
+    const cover = (item.cover_url && String(item.cover_url).trim()) ? item.cover_url : fallbackCoverDataUri(title, subtitle);
 
-    const cover = (item.cover_url && String(item.cover_url).trim())
-      ? item.cover_url
-      : fallbackCoverDataUri(title, subtitle);
-
-    const canRemove = (item && item.can_remove) ? true : false;
-    const adminControls = canRemove ? `
-      <div class="admin-row">
-        <div class="badge-admin">${IS_ADMIN ? "Admin" : (IS_MODERATOR ? "Moderator" : "Owner")}</div>
-        <button class="btn-danger-soft" type="button" data-can-remove="1" onclick="removeScenario(${item.id}, this)">Remove</button>
+    const removeBtnHtml = item.can_remove ? `
+      <div class="admin-actions-overlay">
+        <button class="btn-remove-circle" title="Remove Scenario" onclick="removeScenario(${item.id}, this)">
+          <svg viewBox="0 0 24 24"><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z"/></svg>
+        </button>
       </div>
-    ` : ``;
+    ` : '';
 
     col.innerHTML = `
       <div class="card-scen">
+        ${removeBtnHtml}
         <div class="thumb">
-          <img src="${cover}" alt="cover"
-               onerror="this.onerror=null; this.src=fallbackCoverDataUri(${JSON.stringify(title)}, ${JSON.stringify(subtitle)});">
+          <img src="${cover}" alt="cover" onerror="this.src=fallbackCoverDataUri('${title.replace(/'/g,"\\'")}', '');">
         </div>
         <div class="meta">
           <div class="sub">${item.author || "Unknown"} · ${fmtDate(item.created_at)}</div>
-          <h3 class="title">${title}</h3>
-
+          <h3 class="title text-truncate">${title}</h3>
           <div class="actions">
             <a class="btn-action btn-play" href="/scenario/${item.id}/start">Play</a>
-            <a class="btn-action btn-tech" href="/scenario/${item.id}/start?images=1">Play with visuals</a>
+            <a class="btn-action btn-tech" href="/scenario/${item.id}/start?images=1">Visuals</a>
           </div>
-
-          ${adminControls}
         </div>
       </div>
     `;
@@ -364,33 +269,20 @@
 
   async function load(){
     const res = await fetch('/api/library');
-    const grid = byId('grid');
-    grid.innerHTML = '';
-    if(!res.ok){
-      byId('empty').style.display = 'block';
-      byId('empty').textContent = 'Failed to load library.';
-      return;
-    }
+    if(!res.ok) return;
     const data = await res.json();
     const items = data.items || [];
+    const grid = byId('grid');
+    grid.innerHTML = '';
 
-    if(items.length === 0){
-      byId('empty').style.display = 'block';
-      return;
-    }
-    byId('empty').style.display = 'none';
-
-    for(const it of items){
-      grid.appendChild(card(it));
-    }
+    if(items.length === 0) { byId('empty').style.display = 'block'; return; }
+    items.forEach(it => grid.appendChild(card(it)));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     load();
-    const wrap = document.getElementById('removeAllWrap');
-    if(wrap && (IS_ADMIN || IS_MODERATOR)) wrap.style.display = 'block';
-    const btn = document.getElementById('removeAllBtn');
-    if(btn && (IS_ADMIN || IS_MODERATOR)) btn.addEventListener('click', removeAll);
+    if(IS_ADMIN || IS_MODERATOR) byId('removeAllWrap').style.display = 'block';
+    byId('removeAllBtn').onclick = removeAll;
   });
 </script>
 {% endblock %}

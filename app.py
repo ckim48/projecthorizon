@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # app.py (FULL UPDATED)
 from __future__ import annotations
 
@@ -6,6 +7,7 @@ import re
 import json
 import sqlite3
 import base64
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote
@@ -17,7 +19,6 @@ try:
     from openai import OpenAI
 except Exception:
     OpenAI = None
-
 
 # ============================================================
 # App config
@@ -35,9 +36,11 @@ MODERATOR_EMAILS = set([
     if e.strip()
 ])
 
+
 def is_moderator_session() -> bool:
     email = (session.get("user_email") or "").strip().lower()
     return bool(email) and (email in MODERATOR_EMAILS)
+
 
 GENERATED_DIR = os.path.join(app.root_path, "static", "generated")
 os.makedirs(GENERATED_DIR, exist_ok=True)
@@ -157,9 +160,51 @@ def init_db():
         """)
         conn.commit()
 
+        # Scenario step cache (shared across runs by unique path)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS scenario_step_cache (
+          scenario_fingerprint TEXT NOT NULL,
+          path TEXT NOT NULL,
+          step INTEGER NOT NULL,
+          step_json TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          PRIMARY KEY (scenario_fingerprint, path, step)
+        )
+        """)
+        conn.commit()
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _scenario_fingerprint(payload: dict) -> str:
+    """Stable fingerprint for sharing cached steps across runs."""
+    try:
+        norm = json.dumps(payload or {}, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        norm = str(payload)
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()
+
+
+def _path_for_step(choices: List[dict], upto_step_inclusive: int) -> Optional[str]:
+    """Return path like 'ABCD' from choices for steps 1..upto_step_inclusive."""
+    by_step: Dict[int, str] = {}
+    for c in (choices or []):
+        try:
+            st = int(c.get("step") or 0)
+        except Exception:
+            continue
+        oid = str(c.get("option") or "").strip().upper()
+        if st >= 1 and oid:
+            by_step[st] = oid
+    path = []
+    for st in range(1, upto_step_inclusive + 1):
+        oid = by_step.get(st)
+        if oid not in {'A', 'B', 'C', 'D'}:
+            return None
+        path.append(oid)
+    return "".join(path)
 
 
 # ============================================================
@@ -282,7 +327,6 @@ FINAL_JSON_SCHEMA: Dict[str, Any] = {
     },
 }
 
-
 # ============================================================
 # Normalization
 # ============================================================
@@ -380,9 +424,12 @@ def _normalize_views(views_any) -> List[dict]:
             return cleaned[:6]
 
     return [
-        {"stakeholder": "Government", "bullets": ["Wants compliance and measurable safety outcomes.", "Concerned about public trust and incident response capacity."]},
-        {"stakeholder": "Company", "bullets": ["Targets cost reduction and service quality improvements.", "Worries about integration cost, liability, and downtime."]},
-        {"stakeholder": "Workers", "bullets": ["Concerned about income stability and job redesign.", "Asks for training, fair evaluation, and grievance channels."]},
+        {"stakeholder": "Government", "bullets": ["Wants compliance and measurable safety outcomes.",
+                                                  "Concerned about public trust and incident response capacity."]},
+        {"stakeholder": "Company", "bullets": ["Targets cost reduction and service quality improvements.",
+                                               "Worries about integration cost, liability, and downtime."]},
+        {"stakeholder": "Workers", "bullets": ["Concerned about income stability and job redesign.",
+                                               "Asks for training, fair evaluation, and grievance channels."]},
     ]
 
 
@@ -403,7 +450,7 @@ def normalize_scenario_output(out: Any, payload: Optional[dict] = None) -> Any:
         level = (payload.get("replacement_level") or "assist").strip().lower()
         level_txt = "Assisting" if level == "assist" else ("Partially Replacing" if level == "partial" else "Replacing")
 
-        out["title"] = first_head or f"{field.title()} Scenario: AI {level_txt} {job}"
+        out["title"] = build_scenario_title(payload)
 
     steps = out.get("steps")
     if not isinstance(steps, list):
@@ -414,7 +461,7 @@ def normalize_scenario_output(out: Any, payload: Optional[dict] = None) -> Any:
 
     for i, s in enumerate(steps):
         if not isinstance(s, dict):
-            steps[i] = {"headline": f"Step {i+1}"}
+            steps[i] = {"headline": f"Step {i + 1}"}
             s = steps[i]
 
         if i == 4:
@@ -422,15 +469,15 @@ def normalize_scenario_output(out: Any, payload: Optional[dict] = None) -> Any:
             if not isinstance(s.get("final_prompt"), str) or not s["final_prompt"].strip():
                 s["final_prompt"] = (
                     "Generate the final 4-dimension impact analysis based on the selected options (A/B/C/D) "
-                    "for steps 1–4. Provide scores (1–10) for ethics/psychological, economic, social, political, "
-                    "and list 3–8 recommended safeguards tailored to the field."
+                    "for steps 1-4. Provide scores (1-10) for ethics/psychological, economic, social, political, "
+                    "and list 3-8 recommended safeguards tailored to the field."
                 )
             for k in list(s.keys()):
                 if k not in ("headline", "final_prompt"):
                     s.pop(k, None)
             continue
 
-        s["headline"] = str(s.get("headline") or f"Step {i+1}").strip() or f"Step {i+1}"
+        s["headline"] = str(s.get("headline") or f"Step {i + 1}").strip() or f"Step {i + 1}"
         s["scenario"] = str(s.get("scenario") or "").strip()
         s["question"] = str(s.get("question") or "").strip()
 
@@ -446,31 +493,28 @@ def normalize_scenario_output(out: Any, payload: Optional[dict] = None) -> Any:
             job = (payload.get("job_title") or "this job").strip()
             field = (payload.get("field") or "general").strip().lower()
             s["scenario"] = (
-                f"In {region}, organizations introduce AI to reshape how {job} work in the {field} domain. "
-                "A pilot across multiple sites reports a measurable improvement in turnaround time, but also shows reliability gaps at peak hours. "
-                "A survey indicates a sizable share of users prefer the new workflow, while a smaller (but vocal) group reports frustration with transparency. "
-                "Projected costs shift: some operational expenses drop, yet spending increases for integration, security, and training. "
-                "Workers raise concerns about income volatility and how performance will be evaluated under AI-assisted workflows. "
-                "Companies emphasize competitiveness and service consistency, arguing that delay could reduce market share. "
-                "Regulators focus on accountability, liability, and incident reporting standards before broader rollout. "
-                "Community groups ask whether benefits are evenly distributed across neighborhoods and vulnerable populations."
+                f"In {region}, organizations deploy AI decision-support tools to augment how {job} work in the {field} domain. "
+                "Early monitoring shows a 12% speed gain in one site but only 3% in another, and error rates differ by about 1.6 percentage points. "
+                "A survey of 600 residents reports 55% approval and 25% concern, mostly about explanations and appeal channels. "
+                "Routine operating costs fall by roughly 8%, but compliance and cybersecurity spending rises by about 7%. "
+                "Workers note that performance metrics changed twice in a month and request training time and clearer evaluation rules. "
+                "Regulators and community groups ask for published audits, data-retention limits, and an incident-response plan before expansion."
             )
-
         scount = _sentences_count(s["scenario"])
-        if scount < 7:
+        if scount < 6:
             pads = [
                 "Independent experts request clearer metrics, audits, and transparency reports.",
                 "Local government asks for a compliance plan and a public incident-response protocol.",
                 "Budget planning highlights trade-offs between speed of rollout and strength of safeguards.",
                 "Stakeholders debate whether the system should be optional, phased, or mandatory by policy.",
             ]
-            need = 7 - scount
+            need = 6 - scount
             if not s["scenario"].endswith((".", "!", "?")):
                 s["scenario"] += "."
             s["scenario"] += " " + " ".join(pads[:need])
-        elif scount > 9:
+        elif scount > 6:
             parts = re.split(r"(?<=[.!?])\s+", s["scenario"].strip())
-            s["scenario"] = " ".join(parts[:8]).strip()
+            s["scenario"] = " ".join(parts[:6]).strip()
 
         if not s["question"]:
             s["question"] = "Which policy action should be taken next, given the trade-offs and stakeholder concerns?"
@@ -503,58 +547,58 @@ def _validate_5step_scenario_reason(out: Any) -> Tuple[bool, str]:
     for i in range(4):
         s = steps[i]
         if not isinstance(s, dict):
-            return False, f"step {i+1} is not dict: {type(s)}"
+            return False, f"step {i + 1} is not dict: {type(s)}"
 
         for k in ("headline", "scenario", "question"):
             v = s.get(k)
             if not isinstance(v, str) or not v.strip():
-                return False, f"step {i+1} missing/empty '{k}'"
+                return False, f"step {i + 1} missing/empty '{k}'"
 
         views = s.get("views")
         if not isinstance(views, list) or not (3 <= len(views) <= 6):
-            return False, f"step {i+1} views must be list len 3..6"
+            return False, f"step {i + 1} views must be list len 3..6"
         seen_stk = set()
         for vi, v in enumerate(views):
             if not isinstance(v, dict):
-                return False, f"step {i+1} views[{vi}] not dict"
+                return False, f"step {i + 1} views[{vi}] not dict"
             st = v.get("stakeholder")
             if st not in STK_ALLOWED:
-                return False, f"step {i+1} views[{vi}] invalid stakeholder: {st}"
+                return False, f"step {i + 1} views[{vi}] invalid stakeholder: {st}"
             if st in seen_stk:
-                return False, f"step {i+1} duplicate stakeholder in views: {st}"
+                return False, f"step {i + 1} duplicate stakeholder in views: {st}"
             seen_stk.add(st)
             bullets = v.get("bullets")
             if not isinstance(bullets, list) or not (2 <= len(bullets) <= 4):
-                return False, f"step {i+1} views[{vi}] bullets must be list len 2..4"
+                return False, f"step {i + 1} views[{vi}] bullets must be list len 2..4"
             if not all(isinstance(b, str) and b.strip() for b in bullets):
-                return False, f"step {i+1} views[{vi}] bullets must be non-empty strings"
+                return False, f"step {i + 1} views[{vi}] bullets must be non-empty strings"
 
         opts = s.get("options")
         if not isinstance(opts, list):
-            return False, f"step {i+1} options is not list: {type(opts)}"
+            return False, f"step {i + 1} options is not list: {type(opts)}"
         if len(opts) != 4:
-            return False, f"step {i+1} options length != 4 (got {len(opts)})"
+            return False, f"step {i + 1} options length != 4 (got {len(opts)})"
 
         seen = set()
         for j, o in enumerate(opts):
             if not isinstance(o, dict):
-                return False, f"step {i+1} option[{j}] not dict: {type(o)}"
+                return False, f"step {i + 1} option[{j}] not dict: {type(o)}"
             oid = o.get("id")
             if oid not in ("A", "B", "C", "D"):
-                return False, f"step {i+1} option[{j}] id invalid: {oid}"
+                return False, f"step {i + 1} option[{j}] id invalid: {oid}"
             if oid in seen:
-                return False, f"step {i+1} duplicate option id: {oid}"
+                return False, f"step {i + 1} duplicate option id: {oid}"
             seen.add(oid)
 
             lab = o.get("label")
             summ = o.get("summary")
             if not isinstance(lab, str) or not lab.strip():
-                return False, f"step {i+1} option {oid} missing/empty label"
+                return False, f"step {i + 1} option {oid} missing/empty label"
             if not isinstance(summ, str) or not summ.strip():
-                return False, f"step {i+1} option {oid} missing/empty summary"
+                return False, f"step {i + 1} option {oid} missing/empty summary"
 
         if seen != {"A", "B", "C", "D"}:
-            return False, f"step {i+1} option ids not exactly A/B/C/D: {sorted(seen)}"
+            return False, f"step {i + 1} option ids not exactly A/B/C/D: {sorted(seen)}"
 
     s5 = steps[4]
     if not isinstance(s5, dict):
@@ -599,12 +643,12 @@ def _get_openai_client() -> Optional["OpenAI"]:
 
 
 def _responses_create_json(
-    client: "OpenAI",
-    *,
-    model: str,
-    system_text: str,
-    user_obj: dict,
-    temperature: float = 0.7,
+        client: "OpenAI",
+        *,
+        model: str,
+        system_text: str,
+        user_obj: dict,
+        temperature: float = 0.7,
 ) -> Tuple[Optional[dict], Optional[str]]:
     user_text = json.dumps(user_obj, ensure_ascii=False)
 
@@ -632,7 +676,7 @@ def _responses_create_json(
             start = text.find("{")
             end = text.rfind("}")
             if start != -1 and end != -1 and end > start:
-                candidate = text[start : end + 1]
+                candidate = text[start: end + 1]
                 _dbg(f"CHAT_PLAIN salvage candidate (first 1200 chars):\n{candidate[:1200]}")
                 return json.loads(candidate), None
             return None, "CHAT_PLAIN: output was not valid JSON"
@@ -658,9 +702,12 @@ def _stub_scenario(payload: dict) -> dict:
         ]
 
     base_views = [
-        {"stakeholder": "Government", "bullets": ["Requests compliance and reporting rules.", "Wants a clear liability and incident-response plan."]},
-        {"stakeholder": "Company", "bullets": ["Focuses on efficiency and competitiveness.", "Worried about integration cost and service downtime."]},
-        {"stakeholder": "Workers", "bullets": ["Wants job redesign and income stability.", "Requests training and fair evaluation standards."]},
+        {"stakeholder": "Government", "bullets": ["Requests compliance and reporting rules.",
+                                                  "Wants a clear liability and incident-response plan."]},
+        {"stakeholder": "Company", "bullets": ["Focuses on efficiency and competitiveness.",
+                                               "Worried about integration cost and service downtime."]},
+        {"stakeholder": "Workers",
+         "bullets": ["Wants job redesign and income stability.", "Requests training and fair evaluation standards."]},
     ]
 
     steps = [
@@ -679,10 +726,14 @@ def _stub_scenario(payload: dict) -> dict:
             "views": base_views,
             "question": "What is the first policy move you take to begin this transition?",
             "options": opts(
-                ("Phased pilot + audit", "Launch a phased pilot with independent audits and rollback triggers; slower benefits but stronger safety learning."),
-                ("Fast rollout + incentives", "Scale quickly with incentives to adopt; faster gains but higher risk of uneven impacts and backlash."),
-                ("Strict limits + human oversight", "Set strict scope limits and require humans-in-the-loop for critical decisions; safer but costlier."),
-                ("Targeted deployment", "Deploy only where readiness thresholds are met and fund equity supports; slower scale but reduces inequality risk."),
+                ("Phased pilot + audit",
+                 "Launch a phased pilot with independent audits and rollback triggers; slower benefits but stronger safety learning."),
+                ("Fast rollout + incentives",
+                 "Scale quickly with incentives to adopt; faster gains but higher risk of uneven impacts and backlash."),
+                ("Strict limits + human oversight",
+                 "Set strict scope limits and require humans-in-the-loop for critical decisions; safer but costlier."),
+                ("Targeted deployment",
+                 "Deploy only where readiness thresholds are met and fund equity supports; slower scale but reduces inequality risk."),
             ),
         },
         {
@@ -698,23 +749,31 @@ def _stub_scenario(payload: dict) -> dict:
                 "You must choose how to handle the mismatch between benefits and complaints."
             ),
             "views": [
-                {"stakeholder": "Customers", "bullets": ["Like faster service but want explanations when things go wrong.", "Concerned about privacy and opaque decisions."]},
-                {"stakeholder": "Company", "bullets": ["Wants to scale to capture efficiency gains.", "Warns that delays could reduce competitiveness."]},
-                {"stakeholder": "Government", "bullets": ["Requests privacy rules and transparency reporting.", "Concerned about public complaints and legitimacy."]},
+                {"stakeholder": "Customers",
+                 "bullets": ["Like faster service but want explanations when things go wrong.",
+                             "Concerned about privacy and opaque decisions."]},
+                {"stakeholder": "Company", "bullets": ["Wants to scale to capture efficiency gains.",
+                                                       "Warns that delays could reduce competitiveness."]},
+                {"stakeholder": "Government", "bullets": ["Requests privacy rules and transparency reporting.",
+                                                          "Concerned about public complaints and legitimacy."]},
             ],
             "question": "How do you respond before scaling further?",
             "options": opts(
-                ("Transparency package", "Mandate public metrics, audits, and clear user explanations; improves trust but slows rollout."),
-                ("Worker protections", "Add workload limits, training, and grievance channels; raises costs but stabilizes adoption."),
-                ("Technical hardening first", "Delay scaling to stress-test and harden reliability; safer but politically harder."),
-                ("Selective expansion", "Expand only in high-performing contexts while fixing weak areas; risks perceived inequality."),
+                ("Transparency package",
+                 "Mandate public metrics, audits, and clear user explanations; improves trust but slows rollout."),
+                ("Worker protections",
+                 "Add workload limits, training, and grievance channels; raises costs but stabilizes adoption."),
+                ("Technical hardening first",
+                 "Delay scaling to stress-test and harden reliability; safer but politically harder."),
+                ("Selective expansion",
+                 "Expand only in high-performing contexts while fixing weak areas; risks perceived inequality."),
             ),
         },
         {
             "headline": "Equity and access become central",
             "scenario": (
                 "Local analysis suggests low-income areas receive fewer quality improvements, and service gaps persist. "
-                "A projection estimates uneven deployment could raise dissatisfaction by 10–20% if unaddressed. "
+                "A projection estimates uneven deployment could raise dissatisfaction by 10-20% if unaddressed. "
                 "Companies propose premium tiers to fund improvements, but advocates warn that may widen inequality. "
                 "Workers argue that staffing cuts in some areas could reduce local employment resilience. "
                 "Regulators consider minimum service standards and penalties for neglecting underserved regions. "
@@ -723,16 +782,23 @@ def _stub_scenario(payload: dict) -> dict:
                 "You must decide how equity will be enforced in the policy."
             ),
             "views": [
-                {"stakeholder": "Community", "bullets": ["Demands fairness across neighborhoods.", "Worried about a two-tier system."]},
-                {"stakeholder": "Government", "bullets": ["Considers minimum service standards.", "Wants enforceable oversight and penalties."]},
-                {"stakeholder": "Company", "bullets": ["Seeks flexible pricing to fund upgrades.", "Warns strict rules may reduce innovation speed."]},
+                {"stakeholder": "Community",
+                 "bullets": ["Demands fairness across neighborhoods.", "Worried about a two-tier system."]},
+                {"stakeholder": "Government",
+                 "bullets": ["Considers minimum service standards.", "Wants enforceable oversight and penalties."]},
+                {"stakeholder": "Company", "bullets": ["Seeks flexible pricing to fund upgrades.",
+                                                       "Warns strict rules may reduce innovation speed."]},
             ],
             "question": "What equity rule do you adopt?",
             "options": opts(
-                ("Minimum service standards", "Set enforceable minimum standards and penalties; increases compliance burden but improves fairness."),
-                ("Equity subsidies", "Use subsidies and targeted investment to lift underserved areas; costs public money but reduces gaps."),
-                ("Readiness scoring", "Deploy by readiness thresholds plus equity-weighted metrics; slower but more defensible."),
-                ("Market-led approach", "Allow pricing tiers with consumer protections; faster funding but higher inequality risk."),
+                ("Minimum service standards",
+                 "Set enforceable minimum standards and penalties; increases compliance burden but improves fairness."),
+                ("Equity subsidies",
+                 "Use subsidies and targeted investment to lift underserved areas; costs public money but reduces gaps."),
+                ("Readiness scoring",
+                 "Deploy by readiness thresholds plus equity-weighted metrics; slower but more defensible."),
+                ("Market-led approach",
+                 "Allow pricing tiers with consumer protections; faster funding but higher inequality risk."),
             ),
         },
         {
@@ -740,7 +806,7 @@ def _stub_scenario(payload: dict) -> dict:
             "scenario": (
                 "A high-profile incident triggers media scrutiny and a spike in public concern. "
                 "A follow-up poll indicates trust drops by 12 points unless stronger oversight is implemented. "
-                "Companies worry that heavy regulation could reduce innovation and raise costs by an estimated 5–8%. "
+                "Companies worry that heavy regulation could reduce innovation and raise costs by an estimated 5-8%. "
                 "Workers demand a clear accountability chain and an appeals process for AI-driven evaluations. "
                 "Regulators consider whether enforcement should be centralized or shared with independent boards. "
                 "Experts recommend transparent incident postmortems and publishable audit results. "
@@ -748,24 +814,31 @@ def _stub_scenario(payload: dict) -> dict:
                 "You must choose the governance structure that will be seen as legitimate."
             ),
             "views": [
-                {"stakeholder": "Experts", "bullets": ["Recommend publishable audits and incident postmortems.", "Warn against black-box deployment."]},
-                {"stakeholder": "Workers", "bullets": ["Want appeals and accountability for evaluation metrics.", "Concerned about surveillance and stress."]},
-                {"stakeholder": "Government", "bullets": ["Needs enforceable governance model.", "Wants to prevent polarization and restore trust."]},
+                {"stakeholder": "Experts", "bullets": ["Recommend publishable audits and incident postmortems.",
+                                                       "Warn against black-box deployment."]},
+                {"stakeholder": "Workers", "bullets": ["Want appeals and accountability for evaluation metrics.",
+                                                       "Concerned about surveillance and stress."]},
+                {"stakeholder": "Government", "bullets": ["Needs enforceable governance model.",
+                                                          "Wants to prevent polarization and restore trust."]},
             ],
             "question": "Which governance model do you implement?",
             "options": opts(
-                ("Independent oversight board", "Create an independent board with audit powers; boosts legitimacy but can slow decisions."),
-                ("Public consultation model", "Use structured public deliberation to set rules; improves buy-in but takes time."),
-                ("Centralized authority", "Centralize decisions for speed with internal review; faster but risks distrust."),
-                ("Shared governance", "Split authority across agencies and stakeholders; balances power but can become complex."),
+                ("Independent oversight board",
+                 "Create an independent board with audit powers; boosts legitimacy but can slow decisions."),
+                ("Public consultation model",
+                 "Use structured public deliberation to set rules; improves buy-in but takes time."),
+                ("Centralized authority",
+                 "Centralize decisions for speed with internal review; faster but risks distrust."),
+                ("Shared governance",
+                 "Split authority across agencies and stakeholders; balances power but can become complex."),
             ),
         },
         {
             "headline": "Final Analysis",
             "final_prompt": (
                 "Generate the final 4-dimension impact analysis based on the selected options (A/B/C/D) "
-                "for steps 1–4. Provide scores (1–10) for ethics/psychological, economic, social, political, "
-                "and list 3–8 recommended safeguards tailored to the field."
+                "for steps 1-4. Provide scores (1-10) for ethics/psychological, economic, social, political, "
+                "and list 3-8 recommended safeguards tailored to the field."
             ),
         },
     ]
@@ -780,13 +853,11 @@ def _make_placeholder_step(step_num: int, payload: dict) -> dict:
     field = (payload.get("field") or "general").strip().lower()
 
     scenario = (
-        f"This step will be generated after the previous choice, so the story stays connected. "
-        f"In {region}, stakeholders continue debating how AI reshapes {job} in the {field} domain. "
-        "Early monitoring reports a 10%–15% performance spread across sites, and complaint volume shifts by about 5% week-to-week. "
-        "Budget planning remains uncertain, with integration costs projected to rise by roughly 6% this quarter. "
-        "Regulators request clearer documentation and incident-response readiness. "
-        "Workers and community groups ask for predictable rules and transparent appeals. "
-        "Companies push for a timeline that maintains competitiveness without triggering preventable harms. "
+        "This step will be generated after the previous choice, so the story stays connected. "
+        f"In {region}, stakeholders continue debating how AI tools change {job} work in the {field} domain. "
+        "Early monitoring shows a 10%-15% performance spread across sites, and complaint volume shifts by about 5% week-to-week. "
+        "Integration and compliance costs are projected to rise by roughly 6% this quarter, even as some routine workload declines. "
+        "Regulators and worker groups request clearer documentation, predictable metrics, and an incident-response plan. "
         "You will decide the next policy action once this step is generated."
     )
 
@@ -820,7 +891,7 @@ def _normalize_single_step(step_obj: Any, payload: dict, step_index_1based: int)
         ],
     }
 
-    # Ensure scenario length 7–8 sentences
+    # Ensure scenario length 6 sentences
     if not s["scenario"]:
         region = (payload.get("region") or "the region").strip()
         job = (payload.get("job_title") or "this job").strip()
@@ -837,20 +908,20 @@ def _normalize_single_step(step_obj: Any, payload: dict, step_index_1based: int)
         )
 
     scount = _sentences_count(s["scenario"])
-    if scount < 7:
+    if scount < 6:
         pads = [
             "Independent experts ask for stress-tests and publishable audit summaries.",
             "Local officials request an enforcement plan with measurable milestones.",
             "Budget planners debate the trade-off between speed and strength of safeguards.",
             "Stakeholders argue over whether the system should be optional, phased, or mandatory.",
         ]
-        need = 7 - scount
+        need = 6 - scount
         if not s["scenario"].endswith((".", "!", "?")):
             s["scenario"] += "."
         s["scenario"] += " " + " ".join(pads[:need])
-    elif scount > 9:
+    elif scount > 6:
         parts = re.split(r"(?<=[.!?])\s+", s["scenario"].strip())
-        s["scenario"] = " ".join(parts[:8]).strip()
+        s["scenario"] = " ".join(parts[:6]).strip()
 
     if not s["question"]:
         s["question"] = "Which policy action should be taken next, given the trade-offs and stakeholder concerns?"
@@ -858,14 +929,69 @@ def _normalize_single_step(step_obj: Any, payload: dict, step_index_1based: int)
     return s
 
 
+def _stub_step_from_history(payload: dict, history: List[dict], step_num: int) -> dict:
+    """Fallback step generator that *still branches* based on the user's path.
+    Used only when OpenAI is unavailable.
+    """
+    # Determine previous choice (most recent)
+    prev_choice = ""
+    if history:
+        prev_choice = str(history[-1].get("choice") or history[-1].get("option") or "").strip().upper()
+
+    region = (payload.get("region") or "the region").strip() or "the region"
+    job = (payload.get("job_title") or "this job").strip() or "this job"
+    field = (payload.get("field") or "general").strip().lower() or "general"
+
+    # Choice-specific direction so Step 2 differs depending on Step 1.
+    # (Keeps classroom-safe, policy-oriented tone, with quantitative points.)
+    choice_flavor = {
+        "A": ("Phased pilot triggers new evidence", "audit-first, cautious scaling"),
+        "B": ("Fast rollout creates rapid gains and backlash", "speed-first, higher volatility"),
+        "C": ("Strict limits shift costs and accountability", "safety-first, higher overhead"),
+        "D": ("Targeted deployment highlights equity trade-offs", "equity-first, uneven performance risk"),
+    }.get(prev_choice or "A", ("Policy choice changes the next pressure point", "path-dependent trade-offs"))
+
+    head0, flavor = choice_flavor
+
+    base_views = [
+        {"stakeholder": "Government", "bullets": ["Wants measurable compliance and clear liability.", "Pressures for incident reporting and transparency."]},
+        {"stakeholder": "Company", "bullets": ["Targets predictable rollout and cost control.", "Worries about delays, integration burden, and competitiveness."]},
+        {"stakeholder": "Workers", "bullets": ["Concerned about workload changes and evaluation fairness.", "Asks for training, stability, and appeals processes."]},
+    ]
+
+    # Make each step text depend on prev_choice so it is visibly different.
+    scenario = (
+        f"After your previous decision ({prev_choice or 'N/A'}), the implementation path becomes {flavor} in {region}. "
+        f"Early monitoring shows a 12% change in throughput in the highest-demand sites, while low-demand sites shift by only 3%. "
+        "A reliability review finds a 0.8% error rate during normal hours but up to 2.4% during peak conditions. "
+        "Complaint volume rises by 14% when explanations are missing, even when outcomes are correct. "
+        "Operating costs increase by 6% due to monitoring, security, and retraining, but some manual workload drops by 9%. "
+        "Regulators request clearer data retention rules and periodic fairness reports with published metrics. "
+        "Worker representatives report higher stress in teams where evaluation criteria changed without advance notice. "
+        "You must decide how to adjust policy before the next expansion phase."
+    )
+
+    # Step-specific question framing
+    q = "What adjustment do you make before moving forward?"
+
+    # Reuse a stable set of options; in fallback mode we focus on branching the narrative,
+    # not the entire option set.
+    opts = [
+        {"id": "A", "label": "Transparency package", "summary": "Mandate public metrics, explanations, and audit logs to improve trust, even if rollout slows."},
+        {"id": "B", "label": "Worker protections", "summary": "Add workload limits, training, and grievance channels to stabilize adoption, even if costs rise."},
+        {"id": "C", "label": "Technical hardening first", "summary": "Pause scaling to stress-test reliability and security; safer but politically harder."},
+        {"id": "D", "label": "Selective expansion", "summary": "Expand only where performance is strong while fixing weak areas; faster but risks perceived inequality."},
+    ]
+
+    out = {"headline": head0, "scenario": scenario, "views": base_views, "question": q, "options": opts}
+    return _normalize_single_step(out, payload, step_num)
+
 def generate_step(payload: dict, scenario_title: str, history: List[dict], step_num: int) -> dict:
     """Generate ONE connected step (1..4) using prior choices for continuity."""
     client = _get_openai_client()
     if client is None:
-        # fallback: use stub's corresponding step
-        stub = _stub_scenario(payload)
-        step_obj = stub["steps"][step_num - 1]
-        return _normalize_single_step(step_obj, payload, step_num)
+        # fallback: still branch using history so steps differ by path
+        return _stub_step_from_history(payload, history, step_num)
 
     model = os.getenv("HORIZON_SCENARIO_MODEL", "gpt-4.1-mini")
 
@@ -875,9 +1001,10 @@ def generate_step(payload: dict, scenario_title: str, history: List[dict], step_
         "Output must be a single JSON object with keys: headline, scenario, views, question, options.\n"
         "\n"
         "REQUIREMENTS:\n"
-        "- scenario must be EXACTLY 7–8 sentences and include at least 2 quantitative data points.\n"
-        f"- views: array of 3–6 stakeholders; stakeholder must be one of: {', '.join(STK_ALLOWED)}.\n"
-        "- each views item: {stakeholder, bullets} with 2–4 bullets.\n"
+        "- scenario must be EXACTLY 6 sentences and include at least 2 quantitative data points.\n"
+        "- Depict AI realistically (software tools, services, dashboards, devices). Avoid humanoid robots or android imagery.\n"
+        f"- views: array of 3-6 stakeholders; stakeholder must be one of: {', '.join(STK_ALLOWED)}.\n"
+        "- each views item: {stakeholder, bullets} with 2-4 bullets.\n"
         "- options: EXACTLY 4 objects with ids A/B/C/D, each {id,label,summary}.\n"
         "- Make the step clearly connected to the previous step and the user's previous choice(s).\n"
         "Tone: neutral, educational, multi-perspective, non-persuasive.\n"
@@ -885,7 +1012,7 @@ def generate_step(payload: dict, scenario_title: str, history: List[dict], step_
     )
 
     user = {
-        "task": f"Generate step {step_num} (of steps 1–4) for the policy simulation.",
+        "task": f"Generate step {step_num} (of steps 1-4) for the policy simulation.",
         "scenario_title": scenario_title,
         "topic": {
             "job_title": (payload.get("job_title") or "").strip(),
@@ -977,94 +1104,105 @@ def _build_history_for_stepgen(scenario: dict, choices: List[dict]) -> List[dict
     return hist
 
 
-
-def _ensure_step_generated_for_run(run_id: int, step_to_generate: int) -> None:
+def _ensure_step_cached(payload: dict, title: str, choices: list, step_to_generate: int) -> dict | None:
     """
-    Lazy-generate and persist step 2/3/4 after the user makes a choice.
+    Ensure a step (2/3/4) exists in the shared cache for the given payload fingerprint and unique path.
 
-    IMPORTANT:
-    - This function should NOT depend on any global "current_step" variable.
-    - It should only generate `step_to_generate` if that step is still a placeholder.
+    Returns the step_json dict (generated or cached). Does NOT mutate the base scenarios.scenario_json.
     """
     if step_to_generate not in (2, 3, 4):
-        return
+        return None
+
+    fp = _scenario_fingerprint(payload)
+    path = _path_for_step(choices, step_to_generate - 1)
+    if not path:
+        return None
 
     with get_conn() as conn:
         cur = conn.cursor()
+
+        # Shared cache lookup
         cur.execute(
-            """
-            SELECT r.id AS run_id, r.choices_json, s.id AS scenario_id, s.input_json, s.scenario_json
-            FROM runs r
-            JOIN scenarios s ON s.id = r.scenario_id
-            WHERE r.id = ?
-            """,
-            (run_id,),
+            "SELECT step_json FROM scenario_step_cache WHERE scenario_fingerprint = ? AND path = ? AND step = ?",
+            (fp, path, step_to_generate),
         )
-        row = cur.fetchone()
-        if not row:
-            return
+        cached = cur.fetchone()
+        if cached and cached["step_json"]:
+            try:
+                return json.loads(cached["step_json"])
+            except Exception:
+                pass
 
-        payload = json.loads(row["input_json"] or "{}")
-        scenario = json.loads(row["scenario_json"] or "{}")
-        choices = json.loads(row["choices_json"] or "[]")
-
-        steps = scenario.get("steps") if isinstance(scenario.get("steps"), list) else []
-        if len(steps) < 5:
-            return
-
-        idx = step_to_generate - 1
-        existing = steps[idx] if idx < len(steps) else None
-        if isinstance(existing, dict) and not _is_placeholder_step(existing):
-            return  # already generated
-
-        title = scenario.get("title") or "Scenario"
-        history = _build_history_for_stepgen(scenario, choices)
-
+        # Generate a new step, then store in shared cache
+        history = _build_history_for_stepgen({"title": title}, choices)
         try:
             new_step = generate_step(payload, title, history, step_to_generate)
         except Exception as e:
             _dbg(f"Step gen exception -> stub. step={step_to_generate} err={e}")
             stub = _stub_scenario(payload)
-            new_step = stub["steps"][idx]
+            new_step = stub["steps"][step_to_generate - 1]
 
-        steps[idx] = new_step
-        scenario["steps"] = steps
+        try:
+            cur.execute(
+                "INSERT OR REPLACE INTO scenario_step_cache (scenario_fingerprint, path, step, step_json) VALUES (?,?,?,?)",
+                (fp, path, step_to_generate, json.dumps(new_step, ensure_ascii=False)),
+            )
+            conn.commit()
+        except Exception:
+            pass
 
-        cur.execute(
-            "UPDATE scenarios SET scenario_json = ? WHERE id = ?",
-            (json.dumps(scenario, ensure_ascii=False), row["scenario_id"]),
-        )
-        conn.commit()
-
-
+        return new_step
 def generate_scenario(payload: dict) -> dict:
-    """Step-wise scenario: generate Step 1 now, Steps 2–4 later after choices."""
-    # Step 1 now
-    step1 = generate_step(payload, scenario_title="", history=[], step_num=1)
+    """Step-wise scenario: generate Step 1 now, Steps 2-4 later after choices."""
+    fp = _scenario_fingerprint(payload)
+    step1 = None
 
-    # Title (same logic as normalize_scenario_output)
-    job = (payload.get("job_title") or "a job").strip() or "a job"
-    field = (payload.get("field") or "general").strip().lower()
-    level = (payload.get("replacement_level") or "assist").strip().lower()
-    level_txt = "Assisting" if level == "assist" else ("Partially Replacing" if level == "partial" else "Replacing")
-    title = f"{field.title()} Scenario: AI {level_txt} {job}"
+    # Shared cache for step 1 (path = '')
+    with get_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT step_json FROM scenario_step_cache WHERE scenario_fingerprint = ? AND path = ? AND step = ?",
+            (fp, "", 1),
+        )
+        r = cur.fetchone()
+        if r and r["step_json"]:
+            try:
+                step1 = json.loads(r["step_json"])
+            except Exception:
+                step1 = None
 
-    steps = [
-        step1,
-        _make_placeholder_step(2, payload),
-        _make_placeholder_step(3, payload),
-        _make_placeholder_step(4, payload),
-        {"headline": "Final Analysis", "final_prompt": (
-            "Generate the final 4-dimension impact analysis based on the selected options (A/B/C/D) "
-            "for steps 1–4. Provide scores (1–10) for ethics/psychological, economic, social, political, "
-            "and list 3–8 recommended safeguards tailored to the field."
-        )},
-    ]
+        if not step1:
+            try:
+                step1 = generate_step(payload, payload.get("job_title", "Scenario"), history=[], step_to_generate=1)
+            except Exception as e:
+                _dbg(f"Step1 gen exception -> stub. err={e}")
+                stub = _stub_scenario(payload)
+                step1 = (stub.get("steps") or [{}])[0] if isinstance(stub.get("steps"), list) else {}
 
-    out = {"title": title, "steps": steps}
-    # Keep strict keys/shape and sentence length (placeholders will be padded to match)
-    out = normalize_scenario_output(out, payload)
-    return out
+            try:
+                cur.execute(
+                    "INSERT OR REPLACE INTO scenario_step_cache (scenario_fingerprint, path, step, step_json) VALUES (?,?,?,?)",
+                    (fp, "", 1, json.dumps(step1, ensure_ascii=False)),
+                )
+                conn.commit()
+            except Exception:
+                pass
+
+    title = build_scenario_title(payload)
+
+    scenario = {
+        "title": title,
+        "meta": {"fingerprint": fp},
+        "steps": [
+            step1,
+            {"headline": "Step 2", "scenario": "", "options": []},
+            {"headline": "Step 3", "scenario": "", "options": []},
+            {"headline": "Step 4", "scenario": "", "options": []},
+            {"headline": "Results", "scenario": "", "options": []},
+        ],
+    }
+    return scenario
+
 
 # ============================================================
 # Final analysis generation
@@ -1195,6 +1333,7 @@ def _openai_step_image(client: "OpenAI", prompt: str, out_path: str) -> None:
     with open(out_path, "wb") as f:
         f.write(img_bytes)
 
+
 def _is_data_uri(url: str) -> bool:
     return isinstance(url, str) and url.startswith("data:image/")
 
@@ -1251,13 +1390,17 @@ def ensure_scenario_cover(scenario_id: int, prefer_openai: bool = False) -> str:
 
     # Generate a real cover image (no text)
     prompt = (
-        "Create a classroom-safe, modern, cinematic cover illustration for a policy simulation library.\n"
+        "Create a classroom-safe, high-quality illustrated cover image for a policy simulation library.\n"
         "No text in the image. No logos. No brand marks.\n"
         f"Scenario title: {title}\n"
         f"Opening headline: {headline}\n"
         f"Opening context: {context}\n"
-        "Style: clean, modern, slightly futuristic, soft lighting, high detail, wide composition."
+        "Style: clean, modern illustration (editorial / textbook style), not photorealistic.\n"
+        "Scene when the the given job is replaced by AI-assist ex) autonomous vehicles, ai-assisted judge or etc. it should depend on given job.\n"
+        "No humanoid robots, no androids, no sci-fi elements, no glowing brains, no futuristic holograms.\n"
+        "Color palette is calm and practical. Composition is balanced and informative, suitable for an academic or policy simulation context."
     )
+
     fname = f"scenario_{scenario_id}_cover.png"
     out_path = os.path.join(GENERATED_DIR, fname)
 
@@ -1270,7 +1413,6 @@ def ensure_scenario_cover(scenario_id: int, prefer_openai: bool = False) -> str:
         cur.execute("UPDATE scenarios SET cover_image_url = ? WHERE id = ?", (url, scenario_id))
         conn.commit()
     return url
-
 
 
 def generate_step_image_for_run(run_id: int, step: int) -> str:
@@ -1307,12 +1449,12 @@ def generate_step_image_for_run(run_id: int, step: int) -> str:
         url = _svg_data_uri(f"{headline}", (scenario_text[:120] + ("…" if len(scenario_text) > 120 else "")))
     else:
         prompt = (
-            "Create a classroom-safe, modern, cinematic illustration for a policy simulation app.\n"
+            "Create a classroom-safe, photorealistic image for a policy simulation app.\n"
             "No text in the image. No logos. No brand marks.\n"
             f"Scene title: {title}\n"
             f"Step {step} headline: {headline}\n"
             f"Context: {scenario_text}\n"
-            "Style: clean, modern, slightly futuristic, soft lighting, high detail, wide composition."
+            "Style: photorealistic documentary photography of a real workplace or public setting. Natural lighting, realistic humans, realistic devices and screens, subtle AI presence through UI dashboards. No humanoid robots, no androids, no glowing circuitry, no sci-fi helmets. Wide composition, high detail."
         )
 
         fname = f"run_{run_id}_step_{step}.png"
@@ -1335,6 +1477,7 @@ def generate_step_image_for_run(run_id: int, step: int) -> str:
 # ============================================================
 PRIMARY_VALUES = ["safety", "fairness", "cost", "speed", "privacy", "legitimacy", "jobs", "innovation"]
 
+
 def _clamp_int(v: Any, lo: int, hi: int, default: int) -> int:
     try:
         x = int(v)
@@ -1346,12 +1489,14 @@ def _clamp_int(v: Any, lo: int, hi: int, default: int) -> int:
         return hi
     return x
 
+
 def _clean_short_text(s: Any, max_len: int = 240) -> str:
     if not isinstance(s, str):
         return ""
     s = s.strip()
     s = re.sub(r"\s+", " ", s)
     return s[:max_len]
+
 
 def compute_axes_from_signal(sig: dict) -> Dict[str, float]:
     """
@@ -1372,9 +1517,9 @@ def compute_axes_from_signal(sig: dict) -> Dict[str, float]:
     gov = _clamp_int(sig.get("governance_preference"), 1, 5, 3)
 
     # base contributions
-    su = float(over - risk)               # -4..+4
-    ha = float(over - 3)                  # -2..+2
-    pc = float(gov - 3)                   # -2..+2
+    su = float(over - risk)  # -4..+4
+    ha = float(over - 3)  # -2..+2
+    pc = float(gov - 3)  # -2..+2
 
     # fairness vs growth: use primary_value
     if pv in ("fairness", "jobs", "privacy", "legitimacy", "safety"):
@@ -1384,8 +1529,9 @@ def compute_axes_from_signal(sig: dict) -> Dict[str, float]:
     else:
         fg = 0.0
 
-    w = 0.6 + 0.1 * conf                  # 0.7..1.1
+    w = 0.6 + 0.1 * conf  # 0.7..1.1
     return {"SU": su * w, "FG": fg * w, "HA": ha * w, "PC": pc * w}
+
 
 def axes_to_type(scores: Dict[str, float]) -> str:
     su = scores.get("SU", 0.0)
@@ -1398,6 +1544,7 @@ def axes_to_type(scores: Dict[str, float]) -> str:
         "H" if ha >= 0 else "A",
         "P" if pc >= 0 else "C",
     ])
+
 
 def recompute_run_mbti(conn: sqlite3.Connection, run_id: int) -> Tuple[str, Dict[str, float]]:
     cur = conn.cursor()
@@ -1511,12 +1658,40 @@ def upsert_step_signal(conn: sqlite3.Connection, *, user_id: Optional[int], run_
     return {"mbti_type": mbti, "mbti_scores": totals}
 
 
+
+
+def _clone_scenario_for_run(conn: sqlite3.Connection, scenario_id: int, user_id: Optional[int]) -> int:
+    """Clone a scenario row so each run has its own mutable scenario_json.
+
+    This prevents step-wise generation (steps 2-4) from overwriting a shared library scenario.
+    """
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT input_json, scenario_json, COALESCE(cover_image_url,'') AS cover_image_url FROM scenarios WHERE id = ?",
+        (scenario_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise ValueError("Scenario not found")
+
+    cur.execute(
+        """
+        INSERT INTO scenarios (created_at, user_id, input_json, scenario_json, cover_image_url, is_public)
+        VALUES (?, ?, ?, ?, ?, 0)
+        """,
+        (now_iso(), user_id, row["input_json"], row["scenario_json"], row["cover_image_url"]),
+    )
+    return cur.lastrowid
+
 # ============================================================
 # Pages
 # ============================================================
 @app.route("/")
 def index():
     return render_template("index.html")
+@app.route("/tutorial")
+def tutorial():
+    return render_template("tutorial.html")
 
 
 @app.route("/scenario", methods=["GET"])
@@ -1527,6 +1702,7 @@ def scenario_page():
 @app.route("/sim", methods=["GET"])
 def sim_page():
     return render_template("sim.html")
+
 
 @app.route("/library", methods=["GET"])
 def library_page():
@@ -1546,11 +1722,15 @@ def start_from_library(scenario_id: int):
         if not s:
             return redirect("/library")
 
+
+        # Clone the scenario so step-wise generation does not overwrite the shared library copy
+        run_scenario_id = _clone_scenario_for_run(conn, scenario_id, user_id)
+
         cur.execute("""
             INSERT INTO runs
               (created_at, user_id, scenario_id, current_step, choices_json, final_json, images_enabled, images_json, mbti_type, mbti_scores_json)
             VALUES (?, ?, ?, 1, '[]', NULL, ?, ?, NULL, '{}')
-        """, (now_iso(), user_id, scenario_id, enable_images, json.dumps({}, ensure_ascii=False)))
+        """, (now_iso(), user_id, run_scenario_id, enable_images, json.dumps({}, ensure_ascii=False)))
         run_id = cur.lastrowid
         conn.commit()
 
@@ -1707,7 +1887,6 @@ def api_generate_scenario():
     session["run_id"] = run_id
     return jsonify({"status": "success", "redirect": "/sim"})
 
-
 @app.route("/api/state", methods=["GET"])
 def api_state():
     run_id = session.get("run_id")
@@ -1726,6 +1905,7 @@ def api_state():
                    r.images_json,
                    r.mbti_type,
                    r.mbti_scores_json,
+                   s.input_json,
                    s.scenario_json,
                    s.id AS scenario_id
             FROM runs r
@@ -1744,6 +1924,27 @@ def api_state():
     current_step = int(row["current_step"] or 1)
     if len(choices) >= 4 and current_step < 5:
         current_step = 5
+
+    # Hydrate steps 2-4 from the shared cache for THIS run's path
+    payload = {}
+    try:
+        payload = json.loads(row["input_json"] or "{}")
+        if not isinstance(payload, dict):
+            payload = {}
+    except Exception:
+        payload = {}
+
+    try:
+        title = scenario.get("title") or "Scenario"
+        steps = scenario.get("steps") if isinstance(scenario.get("steps"), list) else []
+        if isinstance(steps, list) and len(steps) >= 5:
+            for st in range(2, min(int(current_step), 4) + 1):
+                step_json = _ensure_step_cached(payload, title, choices, st)
+                if isinstance(step_json, dict):
+                    steps[st - 1] = step_json
+            scenario["steps"] = steps
+    except Exception as e:
+        _dbg(f"state hydrate cached steps failed: {e}")
 
     images_enabled = int(row["images_enabled"] or 0) == 1
     images = json.loads(row["images_json"] or "{}")
@@ -1775,16 +1976,6 @@ def api_state():
 
 @app.route("/api/choose", methods=["POST"])
 def api_choose():
-    """
-    FULL decision capture endpoint.
-    Frontend sends:
-      { option: "A", signal: {confidence, primary_value, ...} }
-
-    We store:
-      - run_step_signals (upsert) for steps 1–4
-      - runs.choices_json (append) and step advance
-      - runs.mbti_type/scores (recompute)
-    """
     run_id = session.get("run_id")
     if not run_id:
         return jsonify({"status": "error", "message": "No active run."}), 404
@@ -1801,8 +1992,10 @@ def api_choose():
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT r.current_step, r.choices_json, r.user_id, r.scenario_id
+            SELECT r.current_step, r.choices_json, r.user_id, r.scenario_id,
+                   s.input_json, s.scenario_json
             FROM runs r
+            JOIN scenarios s ON s.id = r.scenario_id
             WHERE r.id = ?
         """, (run_id,))
         row = cur.fetchone()
@@ -1814,51 +2007,60 @@ def api_choose():
         if len(choices) >= 4:
             return jsonify({"status": "error", "message": "Choices already complete. Finalize to see results."}), 400
 
-        step = len(choices) + 1
+        step = int(row["current_step"] or 1)
 
-        # Store step signal only for steps 1..4
-        if step <= 4:
-            # validate required signal fields (tight enough to be meaningful)
-            conf = signal.get("confidence")
-            pv = (signal.get("primary_value") or "").strip().lower()
-            if conf is None or pv not in PRIMARY_VALUES:
-                return jsonify({"status": "error", "message": "Missing or invalid signal fields."}), 400
+        # store signal (unchanged from your code — omitted here for brevity if you already have it)
+        _upsert_run_step_signal(conn, int(run_id), int(step), signal)
 
-            upsert_step_signal(
-                conn,
-                user_id=row["user_id"],
-                run_id=int(run_id),
-                scenario_id=int(row["scenario_id"]),
-                step=int(step),
-                option_id=option,
-                signal=signal,
-            )
+        # upsert choice for this step
+        updated = False
+        for c in choices:
+            try:
+                if int(c.get("step") or 0) == int(step):
+                    c["option"] = option
+                    c["ts"] = now_iso()
+                    updated = True
+                    break
+            except Exception:
+                continue
+        if not updated:
+            choices.append({"step": step, "option": option, "ts": now_iso()})
 
-        # Append choice
-        choices.append({"step": step, "option": option, "ts": now_iso()})
+        done_steps = set()
+        for c in choices:
+            try:
+                done_steps.add(int(c.get("step") or 0))
+            except Exception:
+                pass
 
-        new_step = 5 if len(choices) >= 4 else (step + 1)
-        cur.execute("""
+        new_step = 5 if len([s for s in done_steps if 1 <= s <= 4]) >= 4 else (step + 1)
+        cur.execute(
+            """
             UPDATE runs
             SET choices_json = ?, current_step = ?
             WHERE id = ?
-        """, (json.dumps(choices, ensure_ascii=False), new_step, run_id))
+            """,
+            (json.dumps(choices, ensure_ascii=False), new_step, run_id),
+        )
         conn.commit()
 
-        # Generate the next step right after a choice so the storyline stays connected
+        # Pre-warm next step cache (path-specific)
         if step in (1, 2, 3):
             try:
-                _ensure_step_generated_for_run(int(run_id), step + 1)
+                payload = json.loads(row["input_json"] or "{}")
+                if not isinstance(payload, dict):
+                    payload = {}
+                scenario_obj = json.loads(row["scenario_json"] or "{}")
+                title = scenario_obj.get("title") or "Scenario"
+                _ensure_step_cached(payload, title, choices, step + 1)
             except Exception as e:
-                _dbg(f"ensure_step_generated failed: {e}")
+                _dbg(f"ensure_step_cached failed: {e}")
 
-        # Recompute MBTI snapshot for this run
         try:
             recompute_and_store_mbti(conn, int(run_id))
         except Exception as e:
             _dbg(f"MBTI recompute failed: {e}")
 
-        # Return updated run MBTI snapshot
         cur.execute("SELECT mbti_type, mbti_scores_json FROM runs WHERE id = ?", (run_id,))
         r2 = cur.fetchone()
         mbti_type = r2["mbti_type"] if r2 else None
@@ -1867,7 +2069,25 @@ def api_choose():
         except Exception:
             mbti_scores = {}
 
-    return jsonify({"status": "success", "mbti_type": mbti_type, "mbti_scores": mbti_scores})
+        return jsonify({"status": "success", "mbti_type": mbti_type, "mbti_scores": mbti_scores})
+def build_scenario_title(payload: dict) -> str:
+    field = (payload.get("field") or "general").strip().title()
+    job = (payload.get("job_title") or "a role").strip()
+
+    level = (payload.get("replacement_level") or "assist").strip().lower()
+
+    if level == "assist":
+        level_txt = "Assisting"
+    elif level == "partial":
+        level_txt = "Partially Replacing"
+    elif level == "full":
+        level_txt = "Replacing"
+    else:
+        level_txt = "Assisting"  # safe fallback
+
+    return f"{field} Scenario: AI {level_txt} {job}"
+
+
 @app.route("/api/library", methods=["GET"])
 def api_library():
     """Public list for the Library page (stores fast placeholder covers if missing)."""
@@ -1907,12 +2127,12 @@ def api_library():
             "cover_url": cover,
             "user_id": int(r["user_id"]) if r["user_id"] is not None else None,
             "can_remove": (
-                (session.get("role") == "admin") or
-                (session.get("is_moderator") == 1) or
-                (
-                    session.get("user_id") is not None and r["user_id"] is not None and
-                    int(session.get("user_id")) == int(r["user_id"])
-                )
+                    (session.get("role") == "admin") or
+                    (session.get("is_moderator") == 1) or
+                    (
+                            session.get("user_id") is not None and r["user_id"] is not None and
+                            int(session.get("user_id")) == int(r["user_id"])
+                    )
             )
         })
 
@@ -1949,9 +2169,6 @@ def api_ensure_cover():
         return jsonify({"status": "error", "message": "Failed to ensure cover image."}), 500
 
 
-
-
-
 @app.route("/api/finalize", methods=["POST"])
 def api_finalize():
     run_id = session.get("run_id")
@@ -1973,7 +2190,7 @@ def api_finalize():
 
     choices = json.loads(row["choices_json"] or "[]")
     if len(choices) < 4:
-        return jsonify({"status": "error", "message": "Complete steps 1–4 before finalizing."}), 400
+        return jsonify({"status": "error", "message": "Complete steps 1-4 before finalizing."}), 400
 
     if row["final_json"]:
         return jsonify({"status": "success", "final": json.loads(row["final_json"])})
@@ -2093,6 +2310,7 @@ def api_profile_mbti():
         "runs": runs
     })
 
+
 @app.route("/api/profile_stats", methods=["GET"])
 def api_profile_stats():
     """
@@ -2210,8 +2428,8 @@ def api_profile_stats():
         decision_times_sorted = sorted(decision_times)
         dt_stats = {
             "avg_ms": round(sum(decision_times_sorted) / float(len(decision_times_sorted)), 1),
-            "p50_ms": float(decision_times_sorted[len(decision_times_sorted)//2]),
-            "p90_ms": float(decision_times_sorted[max(0, int(len(decision_times_sorted)*0.9)-1)]),
+            "p50_ms": float(decision_times_sorted[len(decision_times_sorted) // 2]),
+            "p90_ms": float(decision_times_sorted[max(0, int(len(decision_times_sorted) * 0.9) - 1)]),
         }
 
     # Monthly series -> avg axes per month
@@ -2222,10 +2440,10 @@ def api_profile_stats():
         denom = float(item["n"] or 1)
         series.append({
             "month": m,
-            "SU": round(item["SU"]/denom, 4),
-            "FG": round(item["FG"]/denom, 4),
-            "HA": round(item["HA"]/denom, 4),
-            "PC": round(item["PC"]/denom, 4),
+            "SU": round(item["SU"] / denom, 4),
+            "FG": round(item["FG"] / denom, 4),
+            "HA": round(item["HA"] / denom, 4),
+            "PC": round(item["PC"] / denom, 4),
             "n": item["n"],
         })
 
@@ -2269,25 +2487,30 @@ def admin_remove_scenario(scenario_id):
 
     Allowed:
       - admin users
-      - moderator emails (e.g., scott@test.com)
+      - moderator emails (via is_moderator_session())
       - the scenario owner (creator)
     """
     user_id = session.get("user_id")
     is_admin = (session.get("role") == "admin")
-    is_mod = (session.get("is_moderator") == 1)
-    if not user_id and not is_admin and not is_mod:
+    is_mod = is_moderator_session()  # ✅ FIX: do not rely on session["is_moderator"]
+
+    # Must be logged in OR admin/mod
+    if (not user_id) and (not is_admin) and (not is_mod):
         return jsonify({"ok": False, "error": "Unauthorized"}), 403
 
     with get_conn() as conn:
         cur = conn.cursor()
+
         cur.execute("SELECT user_id FROM scenarios WHERE id = ?", (scenario_id,))
         row = cur.fetchone()
         if not row:
             return jsonify({"ok": False, "error": "Scenario not found."}), 404
 
         owner_id = row["user_id"]
+
+        # If not admin/mod, only the owner can remove
         if (not is_admin) and (not is_mod):
-            if owner_id is None or int(owner_id) != int(user_id):
+            if (owner_id is None) or (int(owner_id) != int(user_id)):
                 return jsonify({"ok": False, "error": "Unauthorized"}), 403
 
         cur.execute("UPDATE scenarios SET is_public = 0 WHERE id = ?", (scenario_id,))
@@ -2295,20 +2518,22 @@ def admin_remove_scenario(scenario_id):
 
     return jsonify({"ok": True})
 
-
 @app.route("/admin/scenario/remove_all", methods=["POST"])
 def admin_remove_all_scenarios():
-    """Remove ALL scenarios from the public Library (sets is_public=0 for all). Admin or moderator only."""
     is_admin = (session.get("role") == "admin")
-    is_mod = (session.get("is_moderator") == 1)
+    is_mod = is_moderator_session()
+
     if not (is_admin or is_mod):
         return jsonify({"ok": False, "error": "Unauthorized"}), 403
+
     with get_conn() as conn:
         cur = conn.cursor()
         cur.execute("UPDATE scenarios SET is_public = 0 WHERE COALESCE(is_public,1)=1")
         removed = cur.rowcount if cur.rowcount is not None else 0
         conn.commit()
+
     return jsonify({"ok": True, "removed": removed})
+
 
 
 if __name__ == "__main__":

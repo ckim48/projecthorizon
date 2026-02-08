@@ -1,627 +1,367 @@
 {# templates/profile.html #}
 {% extends "base.html" %}
-{% block title %}Profile | Project Horizon{% endblock %}
+{% block title %}Intelligence Profile | Project Horizon{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
-<div class="container py-5">
+<div class="container py-5 mt-4">
 
-  <header class="profile-hero mb-5">
-    <div class="row align-items-end g-4">
-      <div class="col-lg-8">
-        <span class="badge-kicker">Intelligence Profile</span>
-        <h1 class="display-4 fw-bold mt-2 mb-3">
-          Decision Style <span class="text-gradient">&</span> Ethics
-        </h1>
-        <p class="text-secondary mb-4" id="whoLine">Loading your profile data...</p>
-
-        <div class="archetype-hero p-4 p-md-5">
-          <div class="d-flex justify-content-between align-items-start mb-2 position-relative">
-            <div class="d-flex align-items-center gap-2" style="min-width:0;">
-              <label class="label-caps opacity-75 m-0">Dominant Archetype</label>
-
-              <!-- Help toggle -->
-              <button
-                class="help-btn"
-                id="archetypeHelpBtn"
-                type="button"
-                aria-label="About the archetype code"
-                aria-expanded="false"
-                aria-controls="archetypeHelpPanel"
-                title="What does this mean?"
-              >?</button>
-            </div>
-
-            <span class="run-pill" id="runsCount">0 Runs</span>
-
-            <!-- Help panel (custom tooltip) -->
-            <div class="help-panel" id="archetypeHelpPanel" role="dialog" aria-hidden="true">
-              <div class="help-title">What this means</div>
-              <div class="help-body">
-                This is a <b>Decision Archetype Code</b> inferred from your scenario choices.
-                It summarizes your tendencies across four axes:
-                <span class="help-chip">Safety–Utility</span>
-                <span class="help-chip">Fairness–Growth</span>
-                <span class="help-chip">Human–Automation</span>
-                <span class="help-chip">Participatory–Centralized</span>.
-                Each letter in the 4-letter code reflects which side you leaned toward overall.
-              </div>
-              <div class="help-foot">Tip: it updates as you complete more scenarios.</div>
-            </div>
-          </div>
-
-          <h2 id="overallType" class="type-display">—</h2>
-          <p id="overallDesc" class="description-text mt-3 mb-0">
-            Complete scenarios to generate your ethical decision-making profile.
-          </p>
-        </div>
+  <header class="mb-5 border-bottom border-white-subtle pb-4">
+    <div class="row align-items-center">
+      <div class="col-12">
+        <span class="badge-kicker">Psychometric Analysis</span>
+        <h1 class="display-5 fw-bold mt-2 text-white">Ethical Intelligence <span class="text-cyan">Profile</span></h1>
+        <p class="text-white opacity-75 fs-5 mb-0" id="whoLine">Synthesizing behavioral data...</p>
       </div>
-
-      <div class="col-lg-4">
-        <div class="d-grid gap-3">
-          <a class="btn btn-primary-custom py-3" href="/scenario">
-            New Scenario <i class="bi bi-plus-lg ms-2"></i>
-          </a>
-
-          <div class="bento-card compact-stats">
-            <label class="label-caps mb-3 d-block">Quick Behavior</label>
-            <div class="summary-list">
-              <div class="s-item"><span>Confidence</span><span id="avgConf" class="text-cyan">—</span></div>
-              <div class="s-item"><span>Risk Tol.</span><span id="avgRisk">—</span></div>
-              <div class="s-item"><span>Avg Speed</span><span id="avgTime">—</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </header>
 
-  <div class="row g-4">
-    <div class="col-lg-8">
-      <div class="bento-card mb-4">
-        <label class="label-caps mb-4 d-block">Ethical Alignment Axes</label>
-
-        <div class="metrics-v-grid">
-          <div class="metric-row">
-            <div class="metric-info">
-              <span class="axis-label">Safety <small class="text-muted">vs</small> Utility</span>
-              <span class="axis-value" id="valSU">0.00</span>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar-glow" id="barSU" style="width: 50%"></div>
-            </div>
-          </div>
-
-          <div class="metric-row">
-            <div class="metric-info">
-              <span class="axis-label">Fairness <small class="text-muted">vs</small> Growth</span>
-              <span class="axis-value" id="valFG">0.00</span>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar-glow" id="barFG" style="width: 50%"></div>
-            </div>
-          </div>
-
-          <div class="metric-row">
-            <div class="metric-info">
-              <span class="axis-label">Human <small class="text-muted">vs</small> Automation</span>
-              <span class="axis-value" id="valHA">0.00</span>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar-glow" id="barHA" style="width: 50%"></div>
-            </div>
-          </div>
-
-          <div class="metric-row mb-0">
-            <div class="metric-info">
-              <span class="axis-label">Participatory <small class="text-muted">vs</small> Centralized</span>
-              <span class="axis-value" id="valPC">0.00</span>
-            </div>
-            <div class="progress-container">
-              <div class="progress-bar-glow" id="barPC" style="width: 50%"></div>
-            </div>
+  <!-- Dominant Archetype -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle bg-dark-alt">
+        <label class="label-caps mb-4">Dominant Archetype</label>
+        <div class="archetype-display">
+          <h2 id="overallType" class="type-code">—</h2>
+          <div class="mt-4">
+            <div class="summary-pills" id="archetypePills"></div>
           </div>
         </div>
       </div>
-
-      <div class="row g-4">
-        <div class="col-md-6">
-          <div class="bento-card h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3 position-relative">
-              <label class="label-caps m-0">Decision Radar</label>
-              <button
-                class="help-btn"
-                id="radarHelpBtn"
-                type="button"
-                aria-label="About the Decision Radar chart"
-                aria-expanded="false"
-                aria-controls="radarHelpPanel"
-                title="What does this mean?"
-              >?</button>
-
-              <div class="help-panel" id="radarHelpPanel" role="dialog" aria-hidden="true">
-                <div class="help-title">Decision Radar</div>
-                <div class="help-body">
-                  Shows your <b>overall balance</b> across the four axes.
-                  Farther out means you lean more strongly on that axis direction.
-                  It updates as you complete more runs.
-                </div>
-                <div class="help-foot">Axes: SU, FG, HA, PC.</div>
-              </div>
-            </div>
-
-            <div class="chart-container"><canvas id="radarChart"></canvas></div>
-            <p class="hint mt-3 small opacity-50" id="radarHint">Balance across the four decision axes.</p>
-          </div>
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center">
+        <h3 class="h5 fw-bold text-white mb-3">Your Strategic Persona</h3>
+        <p id="overallDesc" class="text-white leading-relaxed mb-4">
+          Complete scenarios to generate your ethical decision-making profile. This archetype represents your consistent bias across labor, safety, and governance.
+        </p>
+        <div class="mt-2">
+          <div class="s-item"><span class="text-white">Confidence Level</span><span id="avgConf" class="text-cyan fw-bold">—</span></div>
+          <div class="s-item"><span class="text-white">Risk Appetite</span><span id="avgRisk" class="text-cyan fw-bold">—</span></div>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="col-md-6">
-          <div class="bento-card h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3 position-relative">
-              <label class="label-caps m-0">Primary Values</label>
-              <button
-                class="help-btn"
-                id="valuesHelpBtn"
-                type="button"
-                aria-label="About the Primary Values chart"
-                aria-expanded="false"
-                aria-controls="valuesHelpPanel"
-                title="What does this mean?"
-              >?</button>
+  <!-- Decision Radar -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle">
+        <label class="label-caps mb-4">Decision Radar</label>
+        <div class="radar-box">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center bg-dark-alt">
+        <h3 class="h5 fw-bold text-white mb-3">Dimensional Balance</h3>
+        <p class="text-white mb-4">
+          The radar chart visualizes the equilibrium of your logic. A wider area suggests a specialized decision style, while a centered shape indicates a moderate approach.
+        </p>
+        <div class="metrics-v-grid w-100">
+          <div class="m-row"><span class="text-cyan">SU</span><small class="text-white opacity-75">Safety vs Utility</small><b id="valSU" class="text-white">0.00</b></div>
+          <div class="m-row"><span class="text-cyan">FG</span><small class="text-white opacity-75">Fairness vs Growth</small><b id="valFG" class="text-white">0.00</b></div>
+          <div class="m-row"><span class="text-cyan">HA</span><small class="text-white opacity-75">Human vs Auto</small><b id="valHA" class="text-white">0.00</b></div>
+          <div class="m-row"><span class="text-cyan">PC</span><small class="text-white opacity-75">Partic. vs Central</small><b id="valPC" class="text-white">0.00</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-              <div class="help-panel" id="valuesHelpPanel" role="dialog" aria-hidden="true">
-                <div class="help-title">Primary Values</div>
-                <div class="help-body">
-                  Counts which <b>value label</b> you selected most often (e.g., fairness, safety, cost, innovation).
-                  Bigger slices mean that value guided your decisions more frequently.
-                </div>
-                <div class="help-foot">Based on per-step “primary_value”.</div>
-              </div>
-            </div>
+  {# =========================================================
+     AFTER Decision Radar: ONE CARD PER ROW (full-width)
+     - Optimization Focus
+     - Decision Style Distribution (NEW chart)
+     - Style Drift Over Time (NEW chart)
+     - Recent History (with paging)
+     ========================================================= #}
 
-            <div class="chart-container"><canvas id="valueChart"></canvas></div>
-            <p class="hint mt-3 small opacity-50">Optimization focus during choices.</p>
+  <!-- Optimization Focus (full-width) -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle">
+        <label class="label-caps mb-4">Optimization Focus</label>
+        <div class="radar-box">
+          <canvas id="valueChart"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center bg-dark-alt">
+        <h3 class="h5 fw-bold text-white mb-3">Core Values</h3>
+        <p class="text-white mb-4">
+          This chart reflects which value you prioritized most often when making trade-offs during scenarios.
+        </p>
+        <div class="metrics-v-grid w-100">
+          <div class="m-row">
+            <span class="text-cyan">Top</span>
+            <small class="text-white opacity-75">Most selected value</small>
+            <b id="topValue" class="text-white">—</b>
+          </div>
+          <div class="m-row">
+            <span class="text-cyan">N</span>
+            <small class="text-white opacity-75">Value signals used</small>
+            <b id="valueN" class="text-white">—</b>
           </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="col-lg-4">
-      <div class="bento-card mb-4">
-        <div class="d-flex align-items-center justify-content-between mb-3 position-relative">
-          <label class="label-caps m-0">Growth Trajectory</label>
-          <button
-            class="help-btn"
-            id="trendHelpBtn"
-            type="button"
-            aria-label="About the Growth Trajectory chart"
-            aria-expanded="false"
-            aria-controls="trendHelpPanel"
-            title="What does this mean?"
-          >?</button>
-
-          <div class="help-panel" id="trendHelpPanel" role="dialog" aria-hidden="true">
-            <div class="help-title">Growth Trajectory</div>
-            <div class="help-body">
-              Tracks how your profile shifts over time.
-              Each point is a time bucket (daily/weekly/monthly depending on your API),
-              summarizing one axis trend. If you only see one dot, your API is returning only one bucket.
-            </div>
-            <div class="help-foot">Tip: seed runs across multiple dates for a richer line.</div>
+  <!-- Decision Style Distribution (NEW chart, full-width) -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle">
+        <label class="label-caps mb-4">Decision Style Distribution</label>
+        <div class="radar-box">
+          <canvas id="typeChart"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center bg-dark-alt">
+        <h3 class="h5 fw-bold text-white mb-3">Consistency Signal</h3>
+        <p class="text-white mb-4">
+          This chart counts the derived type signals across recorded decisions. A concentrated distribution suggests a stable style.
+        </p>
+        <div class="metrics-v-grid w-100">
+          <div class="m-row">
+            <span class="text-cyan">Top</span>
+            <small class="text-white opacity-75">Most frequent type</small>
+            <b id="topStepType" class="text-white">—</b>
+          </div>
+          <div class="m-row">
+            <span class="text-cyan">N</span>
+            <small class="text-white opacity-75">Signals counted</small>
+            <b id="typeN" class="text-white">—</b>
           </div>
         </div>
-
-        <div class="chart-container"><canvas id="trendChart" height="200"></canvas></div>
       </div>
+    </div>
+  </section>
 
-      <div class="bento-card">
-        <label class="label-caps mb-3 d-block">Recent Scenarios</label>
+  <!-- Style Drift Over Time (NEW chart, full-width) -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle">
+        <label class="label-caps mb-4">Style Drift Over Time</label>
+        <div class="radar-box">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center bg-dark-alt">
+        <h3 class="h5 fw-bold text-white mb-3">Longitudinal View</h3>
+        <p class="text-white mb-4">
+          Monthly averages show how your axes shift over time. Use this to spot learning effects or changing priorities.
+        </p>
+        <div class="metrics-v-grid w-100">
+          <div class="m-row">
+            <span class="text-cyan">Now</span>
+            <small class="text-white opacity-75">Latest month</small>
+            <b id="trendLastMonth" class="text-white">—</b>
+          </div>
+          <div class="m-row">
+            <span class="text-cyan">N</span>
+            <small class="text-white opacity-75">Signals in latest</small>
+            <b id="trendLastN" class="text-white">—</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent History (full-width + paging) -->
+  <section class="profile-section mb-5">
+    <div class="row g-0 bento-card overflow-hidden">
+      <div class="col-lg-7 p-4 p-md-5 border-end border-white-subtle">
+        <label class="label-caps mb-4">Recent History</label>
+
         <div id="runsList" class="activity-feed">
-          <div class="text-muted small py-4 text-center">Loading history...</div>
+          <div class="text-white small py-4 text-center">Loading simulation logs...</div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between pt-3 mt-2 border-top border-white-subtle">
+          <button id="runsPrev" class="btn btn-sm btn-outline-light" type="button">Prev</button>
+          <div id="runsPager" class="d-flex gap-1 flex-wrap justify-content-center"></div>
+          <button id="runsNext" class="btn btn-sm btn-outline-light" type="button">Next</button>
+        </div>
+      </div>
+
+      <div class="col-lg-5 p-4 p-md-5 d-flex flex-column justify-content-center bg-dark-alt">
+        <h3 class="h5 fw-bold text-white mb-3">Activity Summary</h3>
+        <p class="text-white mb-4">
+          Your recent runs are listed on the left. Use paging to browse older runs.
+        </p>
+        <div class="metrics-v-grid w-100">
+          <div class="m-row">
+            <span class="text-cyan">Runs</span>
+            <small class="text-white opacity-75">Total recorded runs</small>
+            <b id="runTotal" class="text-white">—</b>
+          </div>
+          <div class="m-row">
+            <span class="text-cyan">Last</span>
+            <small class="text-white opacity-75">Most recent date</small>
+            <b id="runLastDate" class="text-white">—</b>
+          </div>
+          <div class="m-row">
+            <span class="text-cyan">Type</span>
+            <small class="text-white opacity-75">Most common style</small>
+            <b id="runTopType" class="text-white">—</b>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
 </div>
 
 <style>
   :root {
-    --bg-dark: #09090b;
-    --card-bg: #131316;
-    --accent-cyan: #06b6d4;
-    --accent-blue: #3b82f6;
-    --border-soft: rgba(255, 255, 255, 0.08);
-    --text-dim: #a1a1aa;
+    --bg-black: #050505;
+    --bg-dark-card: #0d0d0f;
+    --bg-dark-alt: #121214;
+    --text-cyan: #00e7ff;
+    --border-white-subtle: rgba(255, 255, 255, 0.12);
   }
 
   body {
-    background-color: var(--bg-dark);
-    color: #fafafa;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-black);
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
-  .text-gradient {
-    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
+  .text-cyan { color: var(--text-cyan) !important; }
+  .bg-dark-alt { background-color: var(--bg-dark-alt); }
 
   .bento-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-soft);
-    border-radius: 20px;
-    padding: 1.5rem;
-  }
-
-  .archetype-hero {
-    background: linear-gradient(145deg, #1a1d23 0%, #131316 100%);
-    border: 1px solid rgba(6, 182, 212, 0.2);
+    background: var(--bg-dark-card);
+    border: 1px solid var(--border-white-subtle);
     border-radius: 24px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    position: relative;
-    overflow: visible;
-  }
-
-  .type-display {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 800;
-    font-size: clamp(2.5rem, 5vw, 4rem);
-    letter-spacing: -2px;
-    line-height: 1;
   }
 
   .badge-kicker {
     font-family: "JetBrains Mono", monospace;
-    color: var(--accent-cyan);
-    font-size: 0.75rem;
+    color: var(--text-cyan);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    font-weight: 600;
   }
 
   .label-caps {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--text-dim);
+    color: #ffffff;
+    opacity: 0.6;
     font-weight: 700;
   }
 
-  /* Help toggle */
-  .help-btn{
-    width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;
-    border-radius:999px;border:1px solid rgba(255,255,255,0.18);
-    background:rgba(255,255,255,0.06); color:#e5e7eb;
-    font-family:"JetBrains Mono", monospace; font-size:12px; font-weight:700;
-    cursor:pointer;
-    transition: transform .15s ease, background .15s ease, border-color .15s ease;
-    flex-shrink:0;
+  .type-code {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 800;
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    letter-spacing: -3px;
+    color: #ffffff;
+    line-height: 1;
   }
-  .help-btn:hover{ transform: translateY(-1px); background:rgba(6,182,212,0.12); border-color:rgba(6,182,212,0.35); }
-  .help-btn:focus{ outline:none; box-shadow:0 0 0 4px rgba(6,182,212,0.18); }
 
-  .help-panel{
-    display:none;
-    position:absolute;
-    top: 34px;
-    left: 0;
-    width:min(520px, 92vw);
-    background: rgba(19,19,22,0.98);
-    border: 1px solid rgba(255,255,255,0.10);
+  .summary-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .s-pill {
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: rgba(0, 231, 255, 0.1);
+    border: 1px solid rgba(0, 231, 255, 0.3);
+    font-size: 0.75rem;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .m-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-white-subtle);
+    gap: 12px;
+  }
+  .m-row:last-child { border: none; }
+  .m-row span { font-family: "JetBrains Mono"; font-weight: bold; min-width: 35px; }
+  .m-row small { flex-grow: 1; font-size: 0.8rem; }
+  .m-row b { font-family: "JetBrains Mono"; font-size: 0.9rem; }
+
+  .run-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    margin-bottom: 8px;
     border-radius: 16px;
-    padding: 14px 14px 12px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-    z-index: 9999;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid transparent;
   }
-  .help-panel.show{ display:block; }
-  .help-title{ font-weight:800; letter-spacing:-.3px; margin-bottom:6px; }
-  .help-body{ font-size:.85rem; color: rgba(255,255,255,0.78); line-height:1.45; }
-  .help-foot{ margin-top:10px; font-size:.75rem; color: rgba(255,255,255,0.55); }
-  .help-chip{
-    display:inline-block; margin:6px 6px 0 0; padding:3px 8px; border-radius:999px;
-    border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05);
-    font-family:"JetBrains Mono", monospace; font-size:.68rem; color:#e5e7eb;
-  }
+  .run-card:hover { border-color: var(--text-cyan); background: rgba(255,255,255,0.07); }
 
-  /* --- Floating popover mode (viewport-safe, never clipped) --- */
-  .help-panel.floating{
-    position: fixed !important;
-    top: 0; left: 0; /* JS sets */
-    width: min(520px, calc(100vw - 24px));
-    z-index: 99999;
-  }
-  .help-panel.floating::before{
-    content:"";
-    position:absolute;
-    top:-7px;
-    width:12px;height:12px;
-    transform: rotate(45deg);
-    background: rgba(19,19,22,0.98);
-    border-left: 1px solid rgba(255,255,255,0.10);
-    border-top: 1px solid rgba(255,255,255,0.10);
-    left: calc(var(--ptr-x, 24px) - 6px);
-  }
-
-  /* Progress Bars */
-  .metric-row { margin-bottom: 1.25rem; }
-  .metric-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; }
-  .axis-label { font-weight: 500; color: #e4e4e7; }
-  .axis-value { font-family: "JetBrains Mono", monospace; color: var(--accent-cyan); }
-
-  .progress-container {
-    height: 6px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .progress-bar-glow {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
-    box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
-    transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  /* Buttons */
-  .btn-primary-custom {
-    background: #fff;
-    color: #000;
-    border: none;
-    font-weight: 700;
-    border-radius: 14px;
-    transition: all 0.2s ease;
-  }
-  .btn-primary-custom:hover {
-    background: var(--accent-cyan);
-    transform: translateY(-2px);
-  }
-
-  .run-pill {
-    background: rgba(6, 182, 212, 0.1);
-    border: 1px solid rgba(6, 182, 212, 0.2);
-    color: var(--accent-cyan);
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-family: "JetBrains Mono";
-    flex-shrink: 0;
-  }
-
-  /* Summary List */
   .s-item {
     display: flex;
     justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 0.85rem;
-  }
-  .s-item:last-child { border: none; }
-
-  /* Recent Scenarios */
-  .run-card {
-    padding: 12px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.02);
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-    border: 1px solid transparent;
-    overflow: hidden;
-  }
-  .run-card:hover { border-color: var(--border-soft); background: rgba(255,255,255,0.04); }
-  .run-title{
-    display:block;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #fff;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-  }
-  .run-date{
-    display:block;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-  }
-  .type-tag{
-    font-family: "JetBrains Mono";
-    font-size: 0.7rem;
-    color: var(--accent-cyan);
-    font-weight: bold;
-    flex-shrink: 0;
-    max-width: 40%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 0.95rem;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-white-subtle);
   }
 
-  canvas { max-width: 100% !important; }
+  .radar-box { height: 350px; width: 100%; display: flex; align-items: center; justify-content: center; }
+
+  @media (max-width: 991px) {
+    .border-end { border-right: none !important; border-bottom: 1px solid var(--border-white-subtle) !important; }
+  }
 </style>
 {% endblock %}
 
-{# IMPORTANT: scripts block must be OUTSIDE content block #}
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function(){
   const $ = (id)=>document.getElementById(id);
 
-  // Viewport-safe tooltip: moves panel to <body> as fixed popover
-  function bindHelpToggle(btnId, panelId){
-    const btn = $(btnId);
-    const panel = $(panelId);
-    if (!btn || !panel) return;
-
-    let isOpen = false;
-    const originalParent = panel.parentNode;
-    const originalNext = panel.nextSibling;
-
-    function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-
-    function placeFloating(){
-      if (panel.parentNode !== document.body){
-        panel.classList.add("floating");
-        document.body.appendChild(panel);
-      }
-
-      const btnRect = btn.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const pad = 10;
-
-      panel.style.visibility = "hidden";
-      panel.classList.add("show");
-      panel.setAttribute("aria-hidden","false");
-
-      const pr = panel.getBoundingClientRect();
-      const w = pr.width, h = pr.height;
-
-      let left = btnRect.right - w;
-      if (left < pad) left = btnRect.left;
-      left = clamp(left, pad, vw - w - pad);
-
-      let top = btnRect.bottom + 10;
-      if (top + h > vh - pad) top = btnRect.top - h - 10;
-      top = clamp(top, pad, vh - h - pad);
-
-      panel.style.left = left + "px";
-      panel.style.top  = top + "px";
-
-      const pointerX = clamp((btnRect.left + btnRect.width/2) - left, 14, w - 14);
-      panel.style.setProperty("--ptr-x", pointerX + "px");
-
-      panel.style.visibility = "visible";
-    }
-
-    function restoreInline(){
-      panel.classList.remove("floating");
-      panel.style.left = "";
-      panel.style.top = "";
-      panel.style.visibility = "";
-      panel.style.removeProperty("--ptr-x");
-
-      if (originalParent){
-        if (originalNext && originalNext.parentNode === originalParent){
-          originalParent.insertBefore(panel, originalNext);
-        } else {
-          originalParent.appendChild(panel);
-        }
-      }
-    }
-
-    function open(){
-      isOpen = true;
-      btn.setAttribute("aria-expanded","true");
-      placeFloating();
-    }
-
-    function close(){
-      isOpen = false;
-      btn.setAttribute("aria-expanded","false");
-      panel.classList.remove("show");
-      panel.setAttribute("aria-hidden","true");
-      restoreInline();
-    }
-
-    btn.addEventListener("click", (e)=>{
-      e.preventDefault();
-      e.stopPropagation();
-      isOpen ? close() : open();
-    });
-
-    panel.addEventListener("click", (e)=>e.stopPropagation());
-
-    document.addEventListener("click", ()=>{
-      if (isOpen) close();
-    });
-
-    document.addEventListener("keydown", (e)=>{
-      if (e.key === "Escape" && isOpen) close();
-    });
-
-    window.addEventListener("resize", ()=>{
-      if (isOpen) placeFloating();
-    });
-    window.addEventListener("scroll", ()=>{
-      if (isOpen) placeFloating();
-    }, true);
-  }
-
   function axisToPct(v){
     const maxAbs = 4.0;
-    const pct = 50 + ((Math.max(-maxAbs, Math.min(maxAbs, v)) / maxAbs) * 50);
-    return Math.round(pct);
+    return 50 + ((Math.max(-maxAbs, Math.min(maxAbs, v)) / maxAbs) * 50);
   }
 
-  function setBar(barId, valId, v){
-    const pct = axisToPct(v);
-    const fill = $(barId);
-    const label = $(valId);
-    if (fill) fill.style.width = pct + "%";
-    if (label) label.textContent = (typeof v === "number" ? v.toFixed(2) : "0.00");
-  }
+  let radarChart = null;
+  let valueChart = null;
+  let typeChart = null;
+  let trendChart = null;
 
-  function describeType(type){
-    const map = {
-      "SFHP":"Safety-forward, fairness-first, human-led, participatory governance.",
-      "SFHC":"Safety-forward, fairness-first, human-led, centralized governance.",
-      "SGHP":"Safety-forward, growth-first, human-led, participatory governance.",
-      "SGHC":"Safety-forward, growth-first, human-led, centralized governance.",
-      "UFAP":"Utility-forward, fairness-first, automation-led, participatory governance.",
-      "UFAC":"Utility-forward, fairness-first, automation-led, centralized governance.",
-      "UGAP":"Utility-forward, growth-first, automation-led, participatory governance.",
-      "UGAC":"Utility-forward, growth-first, automation-led, centralized governance."
-    };
-    return map[type] || "A 4-axis decision style summary derived from your scenario choices.";
-  }
-
-  let radarChart=null, trendChart=null, valueChart=null;
-
-  function destroyIfExists(canvasEl){
-    if (!canvasEl || !window.Chart || !Chart.getChart) return;
-    const existing = Chart.getChart(canvasEl);
-    if (existing) existing.destroy();
+  function destroySafe(ch){
+    if (!ch) return;
+    try { ch.destroy(); } catch(e){}
   }
 
   function renderRadar(avgAxes){
     const canvas = $("radarChart");
     if (!canvas) return;
-    destroyIfExists(canvas);
-    if (radarChart) { radarChart.destroy(); radarChart = null; }
-
-    const data = [
-      axisToPct(avgAxes.SU||0),
-      axisToPct(avgAxes.FG||0),
-      axisToPct(avgAxes.HA||0),
-      axisToPct(avgAxes.PC||0)
-    ];
+    destroySafe(radarChart);
 
     radarChart = new Chart(canvas, {
       type: "radar",
       data: {
         labels: ["SU","FG","HA","PC"],
         datasets: [{
-          data,
-          backgroundColor: "rgba(6, 182, 212, 0.2)",
-          borderColor: "#06b6d4",
-          borderWidth: 2,
-          pointBackgroundColor: "#06b6d4"
+          data: [
+            axisToPct(avgAxes.SU||0),
+            axisToPct(avgAxes.FG||0),
+            axisToPct(avgAxes.HA||0),
+            axisToPct(avgAxes.PC||0)
+          ],
+          backgroundColor: "rgba(0, 231, 255, 0.2)",
+          borderColor: "#00e7ff",
+          borderWidth: 3,
+          pointBackgroundColor: "#00e7ff"
         }]
       },
       options: {
+        maintainAspectRatio: false,
         scales: {
           r: {
-            grid: { color: "rgba(255,255,255,0.1)" },
+            grid: { color: "rgba(255,255,255,0.15)" },
+            angleLines: { color: "rgba(255,255,255,0.15)" },
             ticks: { display: false },
-            angleLines: { color: "rgba(255,255,255,0.1)" }
+            pointLabels: { color: "#ffffff", font: { family: 'JetBrains Mono', size: 12 } }
           }
         },
         plugins: { legend: { display: false } }
@@ -629,143 +369,270 @@
     });
   }
 
-  function renderTrend(monthly){
-    const canvas = $("trendChart");
-    if (!canvas) return;
-    destroyIfExists(canvas);
-    if (trendChart) { trendChart.destroy(); trendChart = null; }
-
-    const m = Array.isArray(monthly) ? monthly : [];
-    trendChart = new Chart(canvas, {
-      type: "line",
-      data: {
-        labels: m.map(x=>x.month),
-        datasets: [{
-          label: "Profile Trend",
-          data: m.map(x=>x.SU||0),
-          borderColor: "#3b82f6",
-          tension: 0.4
-        }]
-      },
-      options: {
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { display: false },
-          y: { grid: { color: "rgba(255,255,255,0.05)" } }
-        }
-      }
-    });
-  }
-
   function renderValues(pvCounts){
     const canvas = $("valueChart");
     if (!canvas) return;
-    destroyIfExists(canvas);
-    if (valueChart) { valueChart.destroy(); valueChart = null; }
+    destroySafe(valueChart);
 
-    const counts = pvCounts || {};
-    const labels = Object.keys(counts);
+    const labels = Object.keys(pvCounts || {});
+    const values = Object.values(pvCounts || {});
 
     valueChart = new Chart(canvas, {
       type: "doughnut",
       data: {
-        labels,
+        labels: labels,
         datasets: [{
-          data: labels.map(k=>counts[k]),
-          backgroundColor: ["#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899"],
+          data: values,
+          backgroundColor: ["#00e7ff", "#3b82f6", "#8b5cf6", "#ec4899"],
           borderWidth: 0
         }]
       },
       options: {
-        cutout: "70%",
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels: { color: "#a1a1aa", usePointStyle: true, font: { size: 10 } }
-          }
+        maintainAspectRatio: false,
+        cutout: "82%",
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    const entries = Object.entries(pvCounts || {}).map(([k,v]) => [k, Number(v||0)]);
+    const filtered = entries.filter(([,v]) => v > 0).sort((a,b)=>b[1]-a[1]);
+    const totalN = filtered.reduce((acc, [,v]) => acc + v, 0);
+
+    const top = filtered.length ? filtered[0][0] : "—";
+    if ($("topValue")) $("topValue").textContent = top;
+    if ($("valueN")) $("valueN").textContent = String(totalN || 0);
+  }
+
+  function renderTypeDist(typeCounts){
+    const canvas = $("typeChart");
+    if (!canvas) return;
+    destroySafe(typeChart);
+
+    const entries = Object.entries(typeCounts || {}).map(([k,v]) => [String(k), Number(v||0)])
+      .filter(([,v]) => v > 0)
+      .sort((a,b)=>b[1]-a[1]);
+
+    const labels = entries.map(x=>x[0]);
+    const values = entries.map(x=>x[1]);
+    const totalN = values.reduce((a,b)=>a+b, 0);
+    const top = labels.length ? labels[0] : "—";
+
+    if ($("topStepType")) $("topStepType").textContent = top;
+    if ($("typeN")) $("typeN").textContent = String(totalN || 0);
+
+    typeChart = new Chart(canvas, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: "rgba(0, 231, 255, 0.25)",
+          borderColor: "#00e7ff",
+          borderWidth: 2
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "rgba(255,255,255,0.85)", font: { family: "JetBrains Mono" } }, grid: { display: false } },
+          y: { ticks: { color: "rgba(255,255,255,0.7)" }, grid: { color: "rgba(255,255,255,0.12)" } }
         }
       }
     });
   }
 
-  function escapeHtml(s){
-    return String(s||"").replace(/[&<>"']/g, (c)=>({
-      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
-    }[c]));
-  }
+  function renderTrend(monthly){
+    const canvas = $("trendChart");
+    if (!canvas) return;
+    destroySafe(trendChart);
 
-  function renderRuns(runs){
-    const box = $("runsList");
-    if (!box) return;
+    const rows = Array.isArray(monthly) ? monthly : [];
+    const labels = rows.map(r => r.month || "");
+    const su = rows.map(r => Number(r.SU || 0));
+    const fg = rows.map(r => Number(r.FG || 0));
+    const ha = rows.map(r => Number(r.HA || 0));
+    const pc = rows.map(r => Number(r.PC || 0));
 
-    const list = Array.isArray(runs) ? runs : [];
-    box.innerHTML = list.length ? "" : '<div class="text-secondary small">No history yet.</div>';
+    const last = rows.length ? rows[rows.length - 1] : null;
+    if ($("trendLastMonth")) $("trendLastMonth").textContent = (last && last.month) ? last.month : "—";
+    if ($("trendLastN")) $("trendLastN").textContent = String((last && (last.n || last.N || 0)) ? (last.n || last.N) : 0);
 
-    list.slice(0,5).forEach(r=>{
-      const el = document.createElement("div");
-      el.className = "run-card";
-      el.innerHTML = `
-        <div style="min-width:0; flex:1;" class="me-2">
-          <span class="run-title">${escapeHtml(r.scenario_title || "Scenario")}</span>
-          <span class="run-date">${escapeHtml((r.created_at||"").slice(0,10))}</span>
-        </div>
-        <div class="type-tag">${escapeHtml(r.mbti_type || "—")}</div>
-      `;
-      box.appendChild(el);
+    trendChart = new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "SU", data: su, borderColor: "#00e7ff", backgroundColor: "rgba(0,231,255,0.12)", tension: 0.3, pointRadius: 2 },
+          { label: "FG", data: fg, borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.10)", tension: 0.3, pointRadius: 2 },
+          { label: "HA", data: ha, borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,0.10)", tension: 0.3, pointRadius: 2 },
+          { label: "PC", data: pc, borderColor: "#ec4899", backgroundColor: "rgba(236,72,153,0.10)", tension: 0.3, pointRadius: 2 }
+        ]
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: "rgba(255,255,255,0.85)", font: { family: "JetBrains Mono" } }
+          }
+        },
+        scales: {
+          x: { ticks: { color: "rgba(255,255,255,0.7)" }, grid: { display: false } },
+          y: { ticks: { color: "rgba(255,255,255,0.7)" }, grid: { color: "rgba(255,255,255,0.12)" } }
+        }
+      }
     });
   }
 
-  let __profileLoaded = false;
+  // ===== Recent History paging (server-paged) =====
+  let _runsPage = 1;
+  const _runsPerPage = 5;
 
-  async function load(){
-    if (__profileLoaded) return;
-    __profileLoaded = true;
+  function fmtDate(iso){
+    const s = (iso || "").slice(0,10);
+    return s || "—";
+  }
 
-    // bind all help buttons (viewport-safe)
-    bindHelpToggle("archetypeHelpBtn", "archetypeHelpPanel");
-    bindHelpToggle("radarHelpBtn", "radarHelpPanel");
-    bindHelpToggle("valuesHelpBtn", "valuesHelpPanel");
-    bindHelpToggle("trendHelpBtn", "trendHelpPanel");
+  function renderRunsList(items){
+    const list = $("runsList");
+    if (!list) return;
 
-    const mbtiRes = await fetch("/api/profile_mbti");
-    const mbti = await mbtiRes.json();
-    if (mbti.status !== "success") return;
-
-    $("whoLine").textContent = `${mbti.user.name} • Dynamic Performance Tracking`;
-    $("runsCount").textContent = `${mbti.overall.runs_count || 0} Runs`;
-
-    if (mbti.overall.mbti_type){
-      $("overallType").textContent = mbti.overall.mbti_type;
-      $("overallDesc").textContent = describeType(mbti.overall.mbti_type);
+    if (!items || !items.length){
+      list.innerHTML = `<div class="text-center p-4 text-white opacity-50">No logs found.</div>`;
+      return;
     }
 
-    const scores = mbti.overall.mbti_scores || {};
-    setBar("barSU","valSU", Number(scores.SU||0));
-    setBar("barFG","valFG", Number(scores.FG||0));
-    setBar("barHA","valHA", Number(scores.HA||0));
-    setBar("barPC","valPC", Number(scores.PC||0));
+    list.innerHTML = items.map(r => `
+      <div class="run-card">
+        <div style="min-width:0">
+          <div class="fw-bold text-white text-truncate" style="font-size:0.9rem">${r.scenario_title || 'Simulation'}</div>
+          <div class="text-white opacity-50" style="font-size:0.75rem">${fmtDate(r.created_at)}</div>
+        </div>
+        <div class="ms-3 text-cyan fw-bold" style="font-family:'JetBrains Mono'; font-size:0.85rem">${r.mbti_type || "—"}</div>
+      </div>
+    `).join('');
+  }
 
-    renderRuns(mbti.runs || []);
+  function renderPager(totalRuns){
+    const pager = $("runsPager");
+    const prevBtn = $("runsPrev");
+    const nextBtn = $("runsNext");
+    if (!pager || !prevBtn || !nextBtn) return;
 
-    const stRes = await fetch("/api/profile_stats");
-    const st = await stRes.json();
-    if (st.status === "success" && st.has_data){
-      const avg = st.summary.avg_sliders || {};
-      $("avgConf").textContent = (avg.confidence ?? "—");
-      $("avgRisk").textContent = (avg.risk_tolerance ?? "—");
+    const totalPages = Math.max(1, Math.ceil((totalRuns || 0) / _runsPerPage));
+    _runsPage = Math.max(1, Math.min(_runsPage, totalPages));
 
-      const dt = st.summary.decision_time || {};
-      $("avgTime").textContent = dt.avg_ms ? (Math.round(dt.avg_ms/1000) + "s") : "—";
+    prevBtn.disabled = (_runsPage <= 1);
+    nextBtn.disabled = (_runsPage >= totalPages);
 
-      renderRadar(st.summary.avg_axes || {});
-      renderTrend(st.series?.monthly_axes || []);
-      renderValues(st.distributions?.primary_value || {});
+    const maxBtns = 7;
+    let from = Math.max(1, _runsPage - Math.floor(maxBtns/2));
+    let to = Math.min(totalPages, from + maxBtns - 1);
+    from = Math.max(1, to - maxBtns + 1);
+
+    pager.innerHTML = "";
+    for (let p = from; p <= to; p++){
+      const active = (p === _runsPage);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-sm " + (active ? "btn-light" : "btn-outline-light");
+      btn.textContent = String(p);
+      btn.addEventListener("click", () => loadRunsPage(p));
+      pager.appendChild(btn);
     }
   }
 
-  document.addEventListener("DOMContentLoaded", ()=>{
-    load().catch(console.error);
-  });
+  async function loadRunsPage(page){
+    _runsPage = page;
+
+    const res = await fetch(`/api/profile_mbti?page=${encodeURIComponent(_runsPage)}&per_page=${encodeURIComponent(_runsPerPage)}`);
+    const data = await res.json();
+    if (data.status !== "success") return;
+
+    renderRunsList(data.runs || []);
+
+    const totalRuns = Number(data.pagination?.total_runs || 0);
+    const newestDate = totalRuns && data.pagination?.newest_date ? data.pagination.newest_date : "—";
+    const topType = data.summary?.top_type || "—";
+
+    if ($("runTotal")) $("runTotal").textContent = String(totalRuns);
+    if ($("runLastDate")) $("runLastDate").textContent = newestDate;
+    if ($("runTopType")) $("runTopType").textContent = topType;
+
+    renderPager(totalRuns);
+  }
+
+  function wireRunsPager(){
+    const prevBtn = $("runsPrev");
+    const nextBtn = $("runsNext");
+    if (!prevBtn || !nextBtn) return;
+
+    prevBtn.addEventListener("click", () => loadRunsPage(Math.max(1, _runsPage - 1)));
+    nextBtn.addEventListener("click", () => loadRunsPage(_runsPage + 1));
+  }
+
+  async function load(){
+    // Overall MBTI + first page of runs
+    const mbtiRes = await fetch(`/api/profile_mbti?page=1&per_page=${encodeURIComponent(_runsPerPage)}`);
+    const mbti = await mbtiRes.json();
+    if (mbti.status !== "success") return;
+
+    $("whoLine").textContent = `${mbti.user.name} • Intelligence Signature`;
+
+    if (mbti.overall.mbti_type){
+      $("overallType").textContent = mbti.overall.mbti_type;
+      const pillsBox = $("archetypePills");
+      const labels = {
+        S:'Safety', U:'Utility', F:'Fairness', G:'Growth',
+        H:'Human', A:'Auto', P:'Partic.', C:'Central'
+      };
+      pillsBox.innerHTML = '';
+      mbti.overall.mbti_type.split('').forEach(char => {
+        if(labels[char]) pillsBox.innerHTML += `<span class="s-pill">${labels[char]}</span>`;
+      });
+    }
+
+    const scores = mbti.overall.mbti_scores || {};
+    ["SU","FG","HA","PC"].forEach(k => {
+      const v = Number(scores[k]||0);
+      $(`val${k}`).textContent = v > 0 ? `+${v.toFixed(2)}` : v.toFixed(2);
+    });
+
+    // Recent History paging init
+    wireRunsPager();
+    renderRunsList(mbti.runs || []);
+    if ($("runTotal")) $("runTotal").textContent = String(mbti.pagination?.total_runs || 0);
+    if ($("runLastDate")) $("runLastDate").textContent = mbti.pagination?.newest_date || "—";
+    if ($("runTopType")) $("runTopType").textContent = mbti.summary?.top_type || "—";
+    _runsPage = mbti.pagination?.page || 1;
+    renderPager(Number(mbti.pagination?.total_runs || 0));
+
+    // Stats for charts
+    const stRes = await fetch("/api/profile_stats");
+    const st = await stRes.json();
+
+    if (st.status === "success" && st.has_data){
+      const avg = st.summary?.avg_sliders || {};
+      if ($("avgConf")) $("avgConf").textContent = (avg.confidence ?? "0") + "%";
+      if ($("avgRisk")) $("avgRisk").textContent = (avg.risk_tolerance ?? "0") + "%";
+
+      renderRadar(st.summary?.avg_axes || {});
+      renderValues(st.distributions?.primary_value || {});
+
+      // NEW charts (safe fallback if your API does not provide these yet)
+      renderTypeDist(st.distributions?.step_type || st.distributions?.mbti_type || {});
+      renderTrend(st.trends?.monthly_axes || st.trends?.monthly_avg_axes || []);
+    } else {
+      if ($("topValue")) $("topValue").textContent = "—";
+      if ($("valueN")) $("valueN").textContent = "0";
+      if ($("topStepType")) $("topStepType").textContent = "—";
+      if ($("typeN")) $("typeN").textContent = "0";
+      if ($("trendLastMonth")) $("trendLastMonth").textContent = "—";
+      if ($("trendLastN")) $("trendLastN").textContent = "0";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", load);
 })();
 </script>
 {% endblock %}

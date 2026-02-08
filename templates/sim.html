@@ -1,255 +1,9 @@
+{# templates/sim.html #}
 {% extends "base.html" %}
 {% block title %}Simulation | Project Horizon{% endblock %}
 
 {% block content %}
-<style>
-  .sticky-side{
-  position: sticky;
-  top: 18px;
-  align-self: start;
-}
-</style>
-
-<div class="container" style="max-width:1200px;">
-  <div class="row g-4 py-4">
-
-    <!-- LEFT: main simulation -->
-    <div class="col-lg-8">
-      <div class="glass p-4 p-md-5">
-        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
-          <div class="me-auto">
-            <div class="kicker" id="stepKicker">Loading...</div>
-            <h2 class="mb-0" id="headline">Please wait</h2>
-          </div>
-
-          <!-- UPDATED STEP PILL -->
-          <div class="step-pill-wrap">
-            <div class="step-pill" id="stepPill">
-              <span class="step-pill__label">STEP</span>
-              <span class="step-pill__num" id="stepPillNum">—</span>
-              <span class="step-pill__sep"></span>
-              <span class="step-pill__tot" id="stepPillTot">5</span>
-            </div>
-          </div>
-        </div>
-
-        <hr class="hr-soft"/>
-
-        <!-- Step image panel -->
-        <div class="glass p-3 mb-3" style="border-radius:16px; display:none;" id="imgPanel">
-          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-            <div>
-              <div class="kicker">Step image</div>
-              <div class="muted" id="imgHint" style="min-height:20px;">
-                No image yet. Click Generate if you want one.
-              </div>
-            </div>
-
-            <div class="d-flex align-items-center gap-2">
-              <button class="btn btn-tech" id="genImageBtn" type="button">
-                Generate image for this step
-              </button>
-            </div>
-          </div>
-
-          <div class="d-flex align-items-center gap-2 mt-2" id="imgLoading" style="display:none;">
-            <div class="muted" id="imgLoadingText">Generating image…</div>
-          </div>
-
-          <div class="mt-3" id="imgWrap" style="display:none;">
-            <img id="stepImg" alt="Step image"
-                 style="width:100%; border-radius:14px; border:1px solid rgba(255,255,255,.10);">
-          </div>
-        </div>
-
-        <div class="muted" id="scenarioText" style="font-size:1.05rem; line-height:1.6;"></div>
-
-        <!-- Step 1-4 -->
-        <div class="mt-4" id="questionWrap" style="display:none;">
-          <div class="kicker mb-2">Choose one</div>
-          <div id="question" class="mb-3" style="font-size:1.12rem;"></div>
-
-          <div class="d-grid gap-2" id="options"></div>
-
-          <div class="d-flex align-items-center justify-content-between gap-3 mt-3">
-            <div class="muted" id="choiceHint" style="min-height:22px;">
-              Select an option, then click Submit.
-            </div>
-            <button class="btn btn-tech" id="submitChoiceBtn" disabled type="button">
-              Submit Choice
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 5 -->
-        <div class="mt-4" id="finalWrap" style="display:none;">
-          <button class="btn btn-tech" id="finalizeBtn" type="button">Generate Final Analysis</button>
-          <div class="muted mt-3" id="msg" style="min-height:22px;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT: path + viewpoints + final output -->
-    <div class="col-lg-4">
-      <div class="glass p-4 p-md-4 sticky-side">
-        <div class="kicker mb-2">Your Path</div>
-        <div class="muted mb-3" id="title"></div>
-        <div id="path" class="d-grid gap-2"></div>
-
-        <hr class="hr-soft"/>
-
-        <!-- MOVED HERE: stakeholder viewpoints -->
-        <div class="mb-3" id="viewsWrap" style="display:none;">
-          <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-            <div class="kicker">Key viewpoints</div>
-            <div class="muted" style="font-size:.92rem;">Use these to compare trade-offs before choosing.</div>
-          </div>
-          <div class="row g-3 mt-1" id="viewsGrid"></div>
-          <hr class="hr-soft mt-3 mb-3"/>
-        </div>
-
-        <!-- Final Output (kept in DOM so JS never crashes; hidden by default) -->
-        <div class="scorebox" id="finalOutBox" style="display:none;">
-          <div class="t mb-2">Final Output</div>
-          <div id="finalOut" class="muted" style="font-size:1.0rem; line-height:1.55;">
-            Complete steps 1–4 to unlock the final analysis.
-          </div>
-        </div>
-
-        <div class="mt-3" id="mbtiBox" style="display:none !important;">
-          <div class="scorebox">
-            <div class="t mb-2">Horizon Decision Style</div>
-            <div class="muted" id="mbtiText" style="font-size:1.0rem; line-height:1.55;">
-              —
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
-</div>
-
-
-<!-- Global Loading Overlay -->
-<div id="globalLoading" style="display:none;">
-  <div class="gl-backdrop"></div>
-  <div class="gl-card">
-    <div class="spinner-border" role="status" aria-hidden="true"></div>
-    <div>
-      <div class="gl-title" id="glTitle">Working…</div>
-      <div class="gl-sub muted" id="glSub">Please wait.</div>
-    </div>
-  </div>
-</div>
-
-<!-- Decision Signal Modal -->
-<div class="modal fade" id="signalModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content modal-glass">
-      <div class="modal-header border-0">
-        <div>
-          <div class="kicker">Decision Reflection</div>
-          <h5 class="mb-0" style="font-family:'Space Grotesk',sans-serif; font-weight:800;">Quick check (research)</h5>
-        </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body pt-2">
-        <div class="muted mb-3" id="modalContext" style="font-size:.98rem; line-height:1.5;">
-          Please answer a few quick questions about why you chose this option.
-        </div>
-
-        <div class="row g-3">
-          <!-- confidence -->
-          <div class="col-12">
-            <div class="field-card">
-              <div class="kicker mb-2">Confidence (1–5)</div>
-              <div class="d-flex flex-wrap gap-2" id="confRadios"></div>
-              <div class="muted mt-2" style="font-size:.92rem;">How confident are you in this choice?</div>
-            </div>
-          </div>
-
-          <!-- primary value -->
-          <div class="col-md-6">
-            <div class="field-card h-100">
-              <div class="kicker mb-2">Primary value</div>
-              <select class="form-select form-select-dark" id="primaryValue">
-                <option value="">Select one…</option>
-                <option value="safety">Safety / harm reduction</option>
-                <option value="fairness">Fairness / equity</option>
-                <option value="privacy">Privacy</option>
-                <option value="jobs">Jobs / worker protection</option>
-                <option value="legitimacy">Legitimacy / trust</option>
-                <option value="cost">Cost control</option>
-                <option value="speed">Speed / rollout</option>
-                <option value="innovation">Innovation</option>
-              </select>
-              <div class="muted mt-2" style="font-size:.92rem;">What mattered most in this decision?</div>
-            </div>
-          </div>
-
-          <!-- sliders -->
-          <div class="col-md-6">
-            <div class="field-card h-100">
-              <div class="kicker mb-2">Preferences (1–5)</div>
-
-              <div class="mb-3">
-                <div class="d-flex justify-content-between">
-                  <div class="muted">Risk tolerance</div>
-                  <div class="pill" id="riskVal">3</div>
-                </div>
-                <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="riskTol">
-                <div class="muted" style="font-size:.9rem;">Higher = accept more risk for faster benefits</div>
-              </div>
-
-              <div class="mb-3">
-                <div class="d-flex justify-content-between">
-                  <div class="muted">Human oversight</div>
-                  <div class="pill" id="overVal">3</div>
-                </div>
-                <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="oversightPref">
-                <div class="muted" style="font-size:.9rem;">Higher = want stronger human review / appeals</div>
-              </div>
-
-              <div class="mb-1">
-                <div class="d-flex justify-content-between">
-                  <div class="muted">Participatory governance</div>
-                  <div class="pill" id="govVal">3</div>
-                </div>
-                <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="govPref">
-                <div class="muted" style="font-size:.9rem;">Higher = want boards/public input, not centralized only</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- rationale -->
-          <div class="col-12">
-            <div class="field-card">
-              <div class="kicker mb-2">Optional rationale (1 sentence)</div>
-              <textarea class="form-control form-control-dark" id="rationale" rows="2" maxlength="240"
-                placeholder="Briefly explain your choice (optional)."></textarea>
-              <div class="muted mt-2" style="font-size:.9rem;">
-                Keep it short. This helps interpret decision patterns.
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <div class="muted" id="signalErr" style="min-height:18px; color:rgba(255,120,120,.9);"></div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-tech" id="signalSubmitBtn">Submit & Continue</button>
-      </div>
-    </div>
-  </div>
-</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 
 <style>
   :root{
@@ -257,72 +11,46 @@
     --muted:rgba(255,255,255,.72);
     --panel: rgba(255,255,255,.03);
   }
+
   .kicker{ font-family:"JetBrains Mono",monospace; letter-spacing:3px; font-size:.75rem; color:var(--cyan); text-transform:uppercase; }
   .muted{ color:var(--muted); }
-  .pill{ font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:2px; text-transform:uppercase; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.02); color:rgba(255,255,255,.78); }
   .hr-soft{ height:1px; background:rgba(255,255,255,.08); border:0; margin:18px 0; }
 
-  .step-pill-wrap{ display:flex; justify-content:flex-end; }
-  .step-pill{
-    display:inline-flex;
+  /* Center layout */
+  .sim-wrap{ max-width: 920px; margin: 0 auto; }
+
+  /* Progress bar */
+  .progress-wrap{
+    border:1px solid rgba(13,202,240,.22);
+    background: radial-gradient(circle at top, rgba(13,202,240,.10), transparent 60%), rgba(255,255,255,.02);
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+  .progress-meta{
+    display:flex;
     align-items:center;
-    gap:10px;
-    padding:10px 12px;
-    border-radius:999px;
-    border:1px solid rgba(13,202,240,.28);
-    background:
-      radial-gradient(circle at 20% 20%, rgba(13,202,240,.16), transparent 60%),
-      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-    box-shadow:
-      0 10px 30px rgba(0,0,0,.30),
-      inset 0 0 0 1px rgba(255,255,255,.06);
-    position:relative;
-    overflow:hidden;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
   }
-  .step-pill::before{
-    content:"";
-    position:absolute;
-    inset:-2px;
-    background: linear-gradient(90deg, rgba(13,202,240,.0), rgba(13,202,240,.22), rgba(13,202,240,.0));
-    transform: translateX(-60%);
-    filter: blur(0px);
-    opacity:.7;
-    pointer-events:none;
-  }
-  .step-pill:hover::before{
-    transform: translateX(60%);
-    transition: transform .7s ease;
-  }
-  .step-pill__label{
-    font-family:"JetBrains Mono",monospace;
-    font-size:.72rem;
-    letter-spacing:2.5px;
-    text-transform:uppercase;
-    color: rgba(13,202,240,.95);
-    padding-left:2px;
-  }
-  .step-pill__num{
+  .progress-meta .steptext{
     font-family:'Space Grotesk',sans-serif;
     font-weight:900;
-    font-size:1.05rem;
-    line-height:1;
     color:#fff;
-    text-shadow: 0 6px 16px rgba(0,0,0,.35);
+    letter-spacing:.5px;
   }
-  .step-pill__sep{
-    width:1px;
-    height:18px;
-    background: rgba(255,255,255,.14);
+  .progress{
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    overflow:hidden;
+    margin-top: 10px;
   }
-  .step-pill__tot{
-    font-family:"JetBrains Mono",monospace;
-    font-size:.85rem;
-    letter-spacing:1px;
-    color: rgba(255,255,255,.70);
+  .progress-bar{
+    background: linear-gradient(90deg, rgba(13,202,240,.45), rgba(13,202,240,.95));
   }
 
+  /* Step choices */
   .btn-choice{
     text-align:left;
     width:100%;
@@ -342,16 +70,49 @@
     background: rgba(13,202,240,.10);
     box-shadow: 0 0 0 3px rgba(13,202,240,.14);
   }
-
-  .scorebox{
-    border:1px solid rgba(13,202,240,.22);
-    background:radial-gradient(circle at top, rgba(13,202,240,.10), transparent 60%), rgba(255,255,255,.02);
-    border-radius:16px;
-    padding:16px;
+  .opt-points{
+    margin:10px 0 0;
+    padding-left:18px;
+    color: rgba(255,255,255,.76);
   }
-  .scorebox .t{ font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:2px; color:var(--cyan); text-transform:uppercase; }
-  .list-clean{ margin:0; padding-left:18px; }
+  .opt-points li{ margin:6px 0; }
 
+  /* Image panel */
+  .img-panel{ border-radius:16px; }
+
+  /* Floating viewpoints button */
+  .fab{
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 1600;
+  }
+  .fab-btn{
+    width: 54px;
+    height: 54px;
+    border-radius: 999px;
+    border: 1px solid rgba(13,202,240,.30);
+    background:
+      radial-gradient(circle at 20% 20%, rgba(13,202,240,.18), transparent 60%),
+      rgba(10,12,18,.92);
+    box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    color: rgba(255,255,255,.92);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: .15s ease;
+  }
+  .fab-btn:hover{
+    transform: translateY(-2px);
+    border-color: rgba(13,202,240,.55);
+  }
+  .fab-btn:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    transform:none;
+  }
+
+  /* Viewpoints modal cards */
   .view-card{
     border:1px solid rgba(255,255,255,.10);
     background: var(--panel);
@@ -390,45 +151,154 @@
   }
   .view-list li{ margin:6px 0; }
 
-  .modal-glass{
-    background: rgba(10,12,18,.92);
-    border:1px solid rgba(255,255,255,.08);
+  /* Modal (solid background) */
+  .modal-solid{
+    background: #0b0e14; /* solid */
+    border:1px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    box-shadow: 0 40px 120px rgba(0,0,0,.65);
+    color: rgba(255,255,255,.94);
+  }
+
+  /* More readable modal spacing */
+  .modal-header{ padding: 22px 24px 12px; }
+  .modal-body{ padding: 18px 24px 22px; }
+  .modal-footer{ padding: 14px 24px 22px; }
+
+  /* Decision Reflection form layout (one input per row) */
+  .dr-wrap{ display:grid; gap:24px; }
+  .dr-row{
+    position: relative;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
     border-radius: 18px;
-    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+    padding: 18px 18px 16px;
   }
-  .field-card{
-    border:1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.03);
-    border-radius: 16px;
-    padding: 14px;
+  .dr-row .q{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:900;
+    font-size:1.06rem;
+    color:#fff;
+    margin:0 0 8px;
+    letter-spacing:.2px;
   }
+  .dr-row .h{
+    color: rgba(255,255,255,.74);
+    font-size:.95rem;
+    line-height:1.55;
+    margin:0 0 12px;
+  }
+  .dr-row::before{
+    content: attr(data-qnum);
+    position:absolute;
+    top:14px;
+    right:14px;
+    font-family:"JetBrains Mono",monospace;
+    font-size:.72rem;
+    letter-spacing:1.5px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(13,202,240,.35);
+    color: rgba(13,202,240,.98);
+    background: rgba(13,202,240,.10);
+  }
+
+  .dr-divider{
+    height:1px;
+    background: rgba(255,255,255,.12);
+    border:0;
+    margin: 10px 0 14px;
+  }
+
   .form-select-dark, .form-control-dark{
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.10);
-    color: rgba(255,255,255,.92);
-    border-radius: 12px;
+    background: rgba(255,255,255,.07);
+    border: 1px solid rgba(255,255,255,.14);
+    color: rgba(255,255,255,.94);
+    border-radius: 14px;
+    padding: 12px 12px;
   }
+  .form-control-dark{ padding: 12px 12px; }
+
   .form-select-dark:focus, .form-control-dark:focus{
     outline: none;
-    box-shadow: 0 0 0 3px rgba(13,202,240,.16);
-    border-color: rgba(13,202,240,.45);
+    box-shadow: 0 0 0 3px rgba(13,202,240,.20);
+    border-color: rgba(13,202,240,.60);
   }
 
   .conf-btn{
-    border:1px solid rgba(255,255,255,.10);
-    background: rgba(255,255,255,.03);
-    color: rgba(255,255,255,.88);
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.05);
+    color: rgba(255,255,255,.94);
     border-radius: 999px;
-    padding: 8px 12px;
+    padding: 10px 14px;
     font-family: "JetBrains Mono", monospace;
-    font-size: .85rem;
+    font-size: .92rem;
     letter-spacing: 1px;
     transition: .15s ease;
   }
-  .conf-btn:hover{ border-color: rgba(13,202,240,.35); background: rgba(13,202,240,.05); }
-  .conf-btn.active{ border-color: rgba(13,202,240,.85); background: rgba(13,202,240,.10); }
+  .conf-btn:hover{ border-color: rgba(13,202,240,.45); background: rgba(13,202,240,.08); }
+  .conf-btn.active{ border-color: rgba(13,202,240,.98); background: rgba(13,202,240,.14); box-shadow: 0 0 0 3px rgba(13,202,240,.14); }
 
-  #globalLoading{ position:fixed; inset:0; z-index:2000; }
+  /* Range UI: min | value | max */
+  .range-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin: 0 0 8px;
+  }
+  .range-meta .minmax{
+    font-family:"JetBrains Mono",monospace;
+    font-size:.78rem;
+    letter-spacing:1px;
+    color: rgba(255,255,255,.70);
+    width: 44px;
+    flex: 0 0 44px;
+  }
+  .range-meta .minmax.right{ text-align:right; }
+  .range-meta .cur{
+    font-family:"JetBrains Mono",monospace;
+    font-size:.80rem;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(13,202,240,.35);
+    color: rgba(13,202,240,.98);
+    background: rgba(13,202,240,.10);
+    flex: 0 0 auto;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  /* Make native range more visible on dark */
+  input[type="range"].form-range{ filter: brightness(1.1); }
+
+  /* Range sliders: show min/max and current value */
+  .range-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin: 2px 0 10px;
+    font-family:"JetBrains Mono",monospace;
+    font-size:.80rem;
+    letter-spacing:1px;
+    color: rgba(255,255,255,.86);
+  }
+  .range-min, .range-max{ opacity:.8; }
+  .range-val{
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(13,202,240,.35);
+    background: rgba(13,202,240,.10);
+    color: rgba(13,202,240,.98);
+    min-width: 44px;
+    text-align:center;
+  }
+
+  /* Global loading overlay */
+  #globalLoading{ position:fixed; inset:0; z-index:2000; display:none; }
   #globalLoading .gl-backdrop{
     position:absolute; inset:0;
     background: rgba(0,0,0,.55);
@@ -453,6 +323,234 @@
   }
   #globalLoading .gl-sub{ font-size:.95rem; }
 </style>
+
+<div class="container py-4">
+  <div class="sim-wrap">
+
+    <div class="progress-wrap mb-4">
+      <div class="progress-meta">
+        <div class="kicker" id="stepKicker">Loading…</div>
+        <div class="steptext"><span id="stepNow">—</span> / <span id="stepTot">5</span></div>
+      </div>
+      <div class="progress" aria-label="Progress">
+        <div class="progress-bar" id="stepBar" role="progressbar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="glass p-4 p-md-5 mx-auto">
+      <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+        <div class="me-auto">
+          <h2 class="mb-0" id="headline">Please wait</h2>
+        </div>
+      </div>
+
+      <hr class="hr-soft"/>
+
+      <!-- Step image panel -->
+      <div class="glass p-3 mb-3 img-panel" style="display:none;" id="imgPanel">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div>
+            <div class="kicker">Step image</div>
+            <div class="muted" id="imgHint" style="min-height:20px;">
+              No image yet. Click Generate if you want one.
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-tech" id="genImageBtn" type="button">
+              Generate image for this step
+            </button>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 mt-2" id="imgLoading" style="display:none;">
+          <div class="muted" id="imgLoadingText">Generating image…</div>
+        </div>
+
+        <div class="mt-3" id="imgWrap" style="display:none;">
+          <img id="stepImg" alt="Step image"
+               style="width:100%; border-radius:14px; border:1px solid rgba(255,255,255,.10);">
+        </div>
+      </div>
+
+      <div class="muted" id="scenarioText" style="font-size:1.05rem; line-height:1.6;"></div>
+
+      <!-- Step 1-4 -->
+      <div class="mt-4" id="questionWrap" style="display:none;">
+        <div class="kicker mb-2">Choose one</div>
+        <div id="question" class="mb-3" style="font-size:1.12rem;"></div>
+
+        <div class="d-grid gap-2" id="options"></div>
+
+        <div class="d-flex align-items-center justify-content-between gap-3 mt-3">
+          <div class="muted" id="choiceHint" style="min-height:22px;">
+            Select an option, then click Submit.
+          </div>
+          <button class="btn btn-tech" id="submitChoiceBtn" disabled type="button">
+            Submit Choice
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="mt-4" id="doneWrap" style="display:none;">
+        <div class="kicker mb-2">Completed</div>
+        <div class="muted" style="font-size:1.05rem; line-height:1.6;">
+          This run is complete. You can return to the dashboard or start another scenario.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Floating button: Key viewpoints -->
+<div class="fab">
+  <button class="fab-btn" id="viewsFab" type="button" data-bs-toggle="modal" data-bs-target="#viewsModal" aria-label="Key viewpoints">
+    <i class="bi bi-key-fill" style="font-size:1.2rem;"></i>
+  </button>
+</div>
+
+<!-- Key viewpoints modal -->
+<div class="modal fade" id="viewsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content modal-solid">
+      <div class="modal-header border-0">
+        <div>
+          <div class="kicker">Key viewpoints</div>
+          <h5 class="mb-0" style="font-family:'Space Grotesk',sans-serif; font-weight:800;">Compare trade-offs</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <div class="muted mb-3" id="viewsHint" style="font-size:.98rem; line-height:1.5;">
+          Viewpoints for the current step.
+        </div>
+        <div class="row g-3" id="viewsGrid"></div>
+        <div class="muted mt-3" id="viewsEmpty" style="display:none;">No viewpoints are available for this step.</div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Global Loading Overlay -->
+<div id="globalLoading">
+  <div class="gl-backdrop"></div>
+  <div class="gl-card">
+    <div class="spinner-border" role="status" aria-hidden="true"></div>
+    <div>
+      <div class="gl-title" id="glTitle">Working…</div>
+      <div class="gl-sub muted" id="glSub">Please wait.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Decision Signal Modal -->
+<div class="modal fade" id="signalModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content modal-solid">
+      <div class="modal-header border-0">
+        <div>
+          <div class="kicker">Decision Reflection</div>
+          <h5 class="mb-0" style="font-family:'Space Grotesk',sans-serif; font-weight:800;">Quick check (research)</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body pt-2">
+        <div class="muted mb-3" id="modalContext" style="font-size:.98rem; line-height:1.5;">
+          Please answer a few quick questions about why you chose this option.
+        </div>
+
+        <div class="dr-wrap">
+          <!-- confidence -->
+          <div class="dr-row" id="dr_conf" data-qkey="confidence" data-qnum="">
+            <div class="q">Confidence (1–5)</div>
+            <div class="h">How confident are you in this choice?</div>
+            <hr class="dr-divider">
+            <div class="d-flex flex-wrap gap-2" id="confRadios"></div>
+          </div>
+
+          <!-- primary value -->
+          <div class="dr-row" id="dr_primary" data-qkey="primary_value" data-qnum="">
+            <div class="q">Primary value</div>
+            <div class="h">What mattered most in this decision?</div>
+            <hr class="dr-divider">
+            <select class="form-select form-select-dark" id="primaryValue">
+              <option value="">Select one…</option>
+              <option value="safety">Safety / harm reduction</option>
+              <option value="fairness">Fairness / equity</option>
+              <option value="privacy">Privacy</option>
+              <option value="jobs">Jobs / worker protection</option>
+              <option value="legitimacy">Legitimacy / trust</option>
+              <option value="cost">Cost control</option>
+              <option value="speed">Speed / rollout</option>
+              <option value="innovation">Innovation</option>
+            </select>
+          </div>
+
+          <!-- risk tolerance -->
+          <div class="dr-row" id="dr_risk" data-qkey="risk_tolerance" data-qnum="">
+            <div class="q">Risk tolerance (1–5)</div>
+            <div class="h">Higher = accept more risk for faster benefits</div>
+            <hr class="dr-divider">
+            <div class="range-meta">
+              <span class="range-min">1</span>
+              <span class="range-val" id="riskTol_val">3</span>
+              <span class="range-max">5</span>
+            </div>
+            <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="riskTol" aria-label="Risk tolerance">
+          </div>
+
+          <!-- human oversight -->
+          <div class="dr-row" id="dr_over" data-qkey="oversight_preference" data-qnum="">
+            <div class="q">Human oversight (1–5)</div>
+            <div class="h">Higher = want stronger human review / appeals</div>
+            <hr class="dr-divider">
+            <div class="range-meta">
+              <span class="range-min">1</span>
+              <span class="range-val" id="oversightPref_val">3</span>
+              <span class="range-max">5</span>
+            </div>
+            <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="oversightPref" aria-label="Human oversight">
+          </div>
+
+          <!-- participatory governance -->
+          <div class="dr-row" id="dr_gov" data-qkey="governance_preference" data-qnum="">
+            <div class="q">Participatory governance (1–5)</div>
+            <div class="h">Higher = want boards/public input, not centralized only</div>
+            <hr class="dr-divider">
+            <div class="range-meta">
+              <span class="range-min">1</span>
+              <span class="range-val" id="govPref_val">3</span>
+              <span class="range-max">5</span>
+            </div>
+            <input type="range" class="form-range" min="1" max="5" step="1" value="3" id="govPref" aria-label="Participatory governance">
+          </div>
+
+          <!-- rationale -->
+          <div class="dr-row" id="dr_rat" data-qkey="rationale" data-qnum="">
+            <div class="q">Optional rationale (1 sentence)</div>
+            <div class="h">Keep it short. This helps interpret decision patterns.</div>
+            <hr class="dr-divider">
+            <textarea class="form-control form-control-dark" id="rationale" rows="2" maxlength="240"
+                      placeholder="Briefly explain your choice (optional)."></textarea>
+          </div>
+
+          <div class="muted" id="signalErr" style="min-height:18px; color:rgba(255,120,120,.92);"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-tech" id="signalSubmitBtn">Submit & Continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -471,23 +569,15 @@
   const byId = (id)=>document.getElementById(id);
   const safeArr = (x)=>Array.isArray(x) ? x : [];
 
-  // Safe setters to prevent "Cannot set properties of null"
   function setText(id, text){
     const el = byId(id);
     if(el) el.textContent = (text ?? "");
-  }
-  function setHTML(id, html){
-    const el = byId(id);
-    if(el) el.innerHTML = (html ?? "");
   }
   function setDisplay(id, display){
     const el = byId(id);
     if(el) el.style.display = display;
   }
 
-  // -------------------------
-  // Global loading overlay
-  // -------------------------
   function setGlobalLoading(on, title, sub){
     const el = byId('globalLoading');
     if(!el) return;
@@ -500,13 +590,23 @@
     return Number(PROGRESS?.current_step || 1);
   }
 
+  function setProgressBar(){
+    const step = currentStep();
+    const shown = Math.min(step, 5);
+    setText('stepNow', String(shown));
+    setText('stepTot', "5");
+
+    const pct = Math.max(0, Math.min(100, Math.round((shown-1) / 4 * 100)));
+    const bar = byId('stepBar');
+    if(bar) bar.style.width = pct + "%";
+  }
+
   function clearChoiceSelection(){
     SELECTED_OPTION_ID = null;
     const submitBtn = byId('submitChoiceBtn');
     if(submitBtn) submitBtn.disabled = true;
 
     setText('choiceHint', "Select an option, then click Submit.");
-
     document.querySelectorAll('#options .btn-choice').forEach(b=>b.classList.remove('selected'));
   }
 
@@ -522,23 +622,20 @@
   }
 
   // -------------------------
-  // Images (spinner fix)
+  // Images
   // -------------------------
   function hideStepImage(){
-    const wrap = byId('imgWrap');
-    const img = byId('stepImg');
-
     IMAGES_LOADING = false;
     setDisplay('imgLoading', "none");
     setText('imgLoadingText', "");
 
+    const wrap = byId('imgWrap');
+    const img = byId('stepImg');
     if(wrap) wrap.style.display = "none";
     if(img) img.src = "";
   }
 
   function showStepImage(url){
-    const loadingRow = byId('imgLoading');
-    const loadingText = byId('imgLoadingText');
     const hint = byId('imgHint');
     const wrap = byId('imgWrap');
     const img = byId('stepImg');
@@ -550,20 +647,20 @@
     }
 
     IMAGES_LOADING = false;
-    if(loadingRow) loadingRow.style.display = "none";
-    if(loadingText) loadingText.textContent = "";
+    setDisplay('imgLoading', "none");
+    setText('imgLoadingText', "");
     if(hint) hint.textContent = "Image shown for this step.";
 
     if(img){
       img.onload = () => {
         IMAGES_LOADING = false;
-        if(loadingRow) loadingRow.style.display = "none";
-        if(loadingText) loadingText.textContent = "";
+        setDisplay('imgLoading', "none");
+        setText('imgLoadingText', "");
       };
       img.onerror = () => {
         IMAGES_LOADING = false;
-        if(loadingRow) loadingRow.style.display = "none";
-        if(loadingText) loadingText.textContent = "";
+        setDisplay('imgLoading', "none");
+        setText('imgLoadingText', "");
         if(hint) hint.textContent = "Image failed to load.";
       };
       img.src = url;
@@ -576,7 +673,6 @@
 
     const row = byId('imgLoading');
     if(row) row.style.display = on ? "flex" : "none";
-
     if(on){
       if(text) setText('imgLoadingText', text);
     }else{
@@ -587,7 +683,6 @@
     if(!btn) return;
 
     btn.disabled = !!on;
-
     if(on){
       btn.dataset.prevText = btn.textContent || "";
       btn.textContent = "Generating…";
@@ -615,13 +710,7 @@
 
     panel.style.display = "block";
 
-    if(!IMAGES_LOADING){
-      setDisplay('imgLoading', "none");
-      setText('imgLoadingText', "");
-    }
-
     const btn = byId('genImageBtn');
-
     const imgs = PROGRESS?.images;
     const imgUrl =
       (Array.isArray(imgs) ? (imgs[step] || imgs[String(step)]) : (imgs?.[String(step)] || imgs?.[step])) || null;
@@ -630,7 +719,6 @@
       IMAGES_LOADING = false;
       setDisplay('imgLoading', "none");
       setText('imgLoadingText', "");
-
       showStepImage(imgUrl);
 
       if(btn){
@@ -643,7 +731,6 @@
 
     hideStepImage();
     setText('imgHint', "No image yet. Click Generate if you want one.");
-
     if(btn){
       btn.textContent = `Generate image for step ${Math.min(step,5)}`;
       btn.disabled = !!IMAGES_LOADING;
@@ -711,20 +798,28 @@
   }
 
   // -------------------------
-  // Views
+  // Viewpoints (modal)
   // -------------------------
   function renderViews(views){
-    const wrap = byId('viewsWrap');
     const grid = byId('viewsGrid');
-    if(!wrap || !grid) return;
+    const empty = byId('viewsEmpty');
+    const fab = byId('viewsFab');
+    if(!grid || !empty || !fab) return;
 
     grid.innerHTML = "";
 
     const arr = safeArr(views);
+
     if(!arr.length){
-      wrap.style.display = "none";
+      empty.style.display = "block";
+      fab.disabled = true;
+      fab.title = "No viewpoints for this step";
       return;
     }
+
+    empty.style.display = "none";
+    fab.disabled = false;
+    fab.title = "Key viewpoints";
 
     arr.forEach(v=>{
       const col = document.createElement('div');
@@ -751,7 +846,6 @@
 
       const ul = document.createElement('ul');
       ul.className = "view-list";
-
       safeArr(v.bullets).slice(0,4).forEach(b=>{
         const li = document.createElement('li');
         li.textContent = String(b);
@@ -763,8 +857,6 @@
       col.appendChild(card);
       grid.appendChild(col);
     });
-
-    wrap.style.display = "block";
   }
 
   // -------------------------
@@ -775,18 +867,13 @@
     btn.type = "button";
     btn.className = "btn-choice";
 
-    const row = document.createElement('div');
-    row.className = "d-flex justify-content-between align-items-start gap-3";
-
-    const left = document.createElement('div');
-
     const kicker = document.createElement('div');
     kicker.className = "kicker";
     kicker.textContent = opt.id || "?";
 
     const label = document.createElement('div');
     label.style.fontFamily = "'Space Grotesk',sans-serif";
-    label.style.fontWeight = "700";
+    label.style.fontWeight = "800";
     label.style.fontSize = "1.08rem";
     label.textContent = opt.label || "";
 
@@ -795,47 +882,24 @@
     summary.style.marginTop = "6px";
     summary.textContent = opt.summary || "";
 
-    left.appendChild(kicker);
-    left.appendChild(label);
-    left.appendChild(summary);
+    btn.appendChild(kicker);
+    btn.appendChild(label);
+    btn.appendChild(summary);
 
-    row.appendChild(left);
-    btn.appendChild(row);
+    const kp = safeArr(opt.key_points || opt.keypoints || opt.points);
+    if(kp.length){
+      const ul = document.createElement('ul');
+      ul.className = "opt-points";
+      kp.slice(0,3).forEach(x=>{
+        const li = document.createElement('li');
+        li.textContent = String(x);
+        ul.appendChild(li);
+      });
+      btn.appendChild(ul);
+    }
 
     btn.addEventListener('click', ()=>selectChoice(opt.id, btn));
     return btn;
-  }
-
-  // -------------------------
-  // Horizon MBTI box render (right panel)
-  // -------------------------
-  function renderMbtiBox(){
-    const box = byId('mbtiBox');
-    const text = byId('mbtiText');
-    const t = PROGRESS?.mbti_type;
-    const sc = PROGRESS?.mbti_scores || null;
-
-    if(!box || !text) return;
-
-    if(!t && (!sc || Object.keys(sc).length === 0)){
-      box.style.display = "none";
-      return;
-    }
-
-    const parts = [];
-    if(t) parts.push(`<div style="font-family:'Space Grotesk',sans-serif; font-weight:800; font-size:1.05rem;">${t}</div>`);
-
-    if(sc){
-      const fmt = (x)=> (typeof x === "number" ? x.toFixed(2) : String(x ?? "0"));
-      parts.push(`<div class="muted mt-2"><strong>S/U:</strong> ${fmt(sc.SU)}</div>`);
-      parts.push(`<div class="muted"><strong>F/G:</strong> ${fmt(sc.FG)}</div>`);
-      parts.push(`<div class="muted"><strong>H/A:</strong> ${fmt(sc.HA)}</div>`);
-      parts.push(`<div class="muted"><strong>P/C:</strong> ${fmt(sc.PC)}</div>`);
-      parts.push(`<div class="muted mt-2" style="font-size:.92rem;">Computed from your step reflections (confidence, values, and preferences).</div>`);
-    }
-
-    text.innerHTML = parts.join("");
-    box.style.display = "none";
   }
 
   // -------------------------
@@ -845,12 +909,7 @@
     const step = currentStep();
     STEP_START_MS = performance.now();
 
-    setText('title', SCENARIO?.title || "");
-
-    const shownStep = Math.min(step,5);
-    setText('stepPillNum', String(shownStep));
-    setText('stepPillTot', "5");
-
+    setProgressBar();
     syncImagePanelForStep();
 
     const steps = safeArr(SCENARIO?.steps);
@@ -859,25 +918,24 @@
       setText('headline', "Scenario data is incomplete");
       setText('scenarioText', "Your generated scenario did not include 5 steps. Please regenerate.");
       setDisplay('questionWrap', "none");
-      setDisplay('finalWrap', "none");
-      setDisplay('viewsWrap', "none");
+      setDisplay('doneWrap', "none");
+      renderViews([]);
       return;
     }
+
+    const shownStep = Math.min(step,5);
 
     if(step <= 4){
       const s = steps[step-1];
 
-      setText('stepKicker', "Scenario");
+      setText('stepKicker', `Step ${shownStep}`);
       setText('headline', s.headline || "");
       setText('scenarioText', s.scenario || "");
 
       renderViews(s.views);
 
       setDisplay('questionWrap', "block");
-      setDisplay('finalWrap', "none");
-
-      // Safe: finalOut exists, but box stays hidden unless you enable later
-      setText('finalOut', "Complete steps 1–4 to unlock the final analysis.");
+      setDisplay('doneWrap', "none");
 
       setText('question', s.question || "");
 
@@ -887,20 +945,19 @@
         clearChoiceSelection();
         safeArr(s.options).forEach(o => optsWrap.appendChild(makeOptionButton(o)));
       }
-
     }else{
       const s5 = steps[4];
-      setText('stepKicker', "Final");
-      setText('headline', s5.headline || "Final Analysis");
-      setText('scenarioText', s5.final_prompt || "Generate the final impact report.");
-
+      setText('stepKicker', "Step 5");
+      setText('headline', s5.headline || "Completed");
+      setText('scenarioText', s5.final_prompt || "");
+      renderViews([]);
       setDisplay('questionWrap', "none");
-      setDisplay('finalWrap', "block");
+      setDisplay('doneWrap', "block");
     }
   }
 
   // -------------------------
-  // Modal logic (collect decision signals)
+  // Decision modal logic
   // -------------------------
   let signalModal = null;
   let selectedConfidence = null;
@@ -935,9 +992,10 @@
     const op = byId('oversightPref'); if(op) op.value = 3;
     const gp = byId('govPref'); if(gp) gp.value = 3;
 
-    setText('riskVal', "3");
-    setText('overVal', "3");
-    setText('govVal', "3");
+    // sync visible value pills
+    setText('riskTol_val', String(rt ? rt.value : 3));
+    setText('oversightPref_val', String(op ? op.value : 3));
+    setText('govPref_val', String(gp ? gp.value : 3));
 
     const ra = byId('rationale'); if(ra) ra.value = "";
   }
@@ -946,6 +1004,7 @@
     const step = currentStep();
     setText('modalContext', `Step ${step}: you selected option ${PENDING_OPTION_ID}. Please answer a few quick questions about this decision.`);
     resetModalFields();
+    randomizeReflectionQuestions();
     if(signalModal) signalModal.show();
   }
 
@@ -968,17 +1027,75 @@
   }
 
   function validateSignal(sig){
+    // Client-side validation should follow which questions are visible.
     if(!sig) return "Missing signal.";
-    if(!(sig.confidence >= 1 && sig.confidence <= 5)) return "Please select a confidence (1–5).";
-    if(!sig.primary_value) return "Please select a primary value.";
-    const okPV = ["safety","fairness","cost","speed","privacy","legitimacy","jobs","innovation"].includes(sig.primary_value);
-    if(!okPV) return "Primary value is invalid.";
+
+    const confRow = byId('dr_conf');
+    const pvRow = byId('dr_primary');
+
+    if(confRow && isVisible(confRow)){
+      if(!(sig.confidence >= 1 && sig.confidence <= 5)) return "Please select a confidence (1–5).";
+    }
+
+    if(pvRow && isVisible(pvRow)){
+      if(!sig.primary_value) return "Please select a primary value.";
+      const okPV = ["safety","fairness","cost","speed","privacy","legitimacy","jobs","innovation"].includes(sig.primary_value);
+      if(!okPV) return "Primary value is invalid.";
+    }
+
     return null;
+  }
+
+  // -------------------------
+  // Reflection: show only 3 random questions
+  // -------------------------
+  function isVisible(el){
+    if(!el) return false;
+    return (el.style.display !== "none");
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function randomizeReflectionQuestions(){
+    const all = [
+      byId('dr_conf'),
+      byId('dr_primary'),
+      byId('dr_risk'),
+      byId('dr_over'),
+      byId('dr_gov'),
+      byId('dr_rat')
+    ].filter(Boolean);
+
+    all.forEach(r=>{
+      r.style.display = "none";
+      r.setAttribute("data-qnum", "");
+    });
+
+    const pick = shuffle(all).slice(0,3);
+
+    const shown = all.filter(r => pick.includes(r));
+    let n = 1;
+    shown.forEach(r=>{
+      r.style.display = "block";
+      r.setAttribute("data-qnum", "Q" + n);
+      n += 1;
+    });
+
+    const ctx = byId('modalContext');
+    if(ctx){
+      ctx.textContent = `Please answer 3 quick questions about why you chose option ${PENDING_OPTION_ID}.`;
+    }
   }
 
   async function submitChoice(){
     if(!SELECTED_OPTION_ID) return;
-
     if(currentStep() <= 4){
       PENDING_OPTION_ID = SELECTED_OPTION_ID;
       openSignalModal();
@@ -1007,7 +1124,7 @@
       const res = await fetch('/api/choose', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ option: PENDING_OPTION_ID, signal: sig })
+        body: JSON.stringify({ step: currentStep(), option: PENDING_OPTION_ID, signal: sig })
       });
       const data = await res.json();
 
@@ -1030,58 +1147,13 @@
     }
   }
 
-  function bindSlider(id, badgeId){
-    const el = byId(id);
-    const b = byId(badgeId);
-    if(!el || !b) return;
-
-    const sync = ()=>{ b.textContent = String(el.value); };
+  function bindRangeValue(rangeId, valueId){
+    const el = byId(rangeId);
+    const val = byId(valueId);
+    if(!el || !val) return;
+    const sync = ()=>{ val.textContent = String(el.value); };
     el.addEventListener('input', sync);
     sync();
-  }
-
-  // -------------------------
-  // Final
-  // -------------------------
-  async function finalize(){
-    setText('msg', "Generating final analysis...");
-    setGlobalLoading(true, "Generating final analysis…", "This may take a moment.");
-    try{
-      const res = await fetch('/api/finalize', { method:'POST' });
-      const data = await res.json();
-      if(!res.ok){
-        setText('msg', data.message || "Failed.");
-        setGlobalLoading(false);
-        return;
-      }
-      setText('msg', "Done.");
-      renderFinal(data.final);
-      setGlobalLoading(false);
-    }catch(e){
-      setText('msg', "Network error.");
-      setGlobalLoading(false);
-    }
-  }
-
-  function renderFinal(final){
-    // Show the Final Output box and fill it
-    const box = byId('finalOutBox');
-    if(box) box.style.display = "block";
-
-    const di = final?.dimension_impacts || {};
-    const safe = final?.recommended_safeguards || [];
-
-    setHTML('finalOut', `
-      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.05rem;">${final?.verdict_title || "Result"}</div>
-      <div class="muted mt-2"><strong>Ethics/Psych:</strong> ${di.ethics_psych?.score_1to10 ?? "-"} / 10</div>
-      <div class="muted"><strong>Economic:</strong> ${di.economic?.score_1to10 ?? "-"} / 10</div>
-      <div class="muted"><strong>Social:</strong> ${di.social?.score_1to10 ?? "-"} / 10</div>
-      <div class="muted"><strong>Political:</strong> ${di.political?.score_1to10 ?? "-"} / 10</div>
-      <div class="mt-3 muted"><strong>Safeguards</strong></div>
-      <ul class="list-clean muted">
-        ${safe.slice(0,6).map(x=>`<li>${String(x)}</li>`).join('')}
-      </ul>
-    `);
   }
 
   async function loadState({ skipAutoImage = false } = {}){
@@ -1099,7 +1171,11 @@
 
     renderStep();
 
-    // Ensure cover exists for library listing
+    // keep range value pills wired (even if hidden, safe)
+    bindRangeValue('riskTol', 'riskTol_val');
+    bindRangeValue('oversightPref', 'oversightPref_val');
+    bindRangeValue('govPref', 'govPref_val');
+
     try{
       await fetch('/api/ensure_cover', {
         method:'POST',
@@ -1115,22 +1191,26 @@
     setGlobalLoading(false);
   }
 
-  // -------------------------
   // init
-  // -------------------------
-  byId('finalizeBtn')?.addEventListener('click', finalize);
   byId('submitChoiceBtn')?.addEventListener('click', submitChoice);
   byId('genImageBtn')?.addEventListener('click', ()=>generateStepImage(false));
   byId('signalSubmitBtn')?.addEventListener('click', submitSignalAndContinue);
 
+  function bindSlider(id, valId){
+    const el = byId(id);
+    const v = byId(valId);
+    if(!el || !v) return;
+    const sync = ()=>{ v.textContent = String(el.value); };
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+    sync();
+  }
+
   document.addEventListener('DOMContentLoaded', ()=>{
-    // Bootstrap modal (requires bootstrap JS loaded in base.html)
     signalModal = new bootstrap.Modal(byId('signalModal'), { backdrop: 'static', keyboard: false });
-
-    bindSlider('riskTol', 'riskVal');
-    bindSlider('oversightPref', 'overVal');
-    bindSlider('govPref', 'govVal');
-
+    bindSlider('riskTol','riskTol_val');
+    bindSlider('oversightPref','oversightPref_val');
+    bindSlider('govPref','govPref_val');
     initConfidenceRadios();
     loadState();
   });
